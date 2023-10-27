@@ -677,7 +677,7 @@ int main(void)
     }
     strcat(defaultInput, "\\");
     strcat(defaultInput, version);
-    strcat(defaultInput, "\n\nErwAr|40,1-&w6r&w*4/");
+    strcat(defaultInput, "\n\nwFr1&?w6_*7/:w10r1&?w9*64&:w64&9_*;B/;ww5*&w6r||A*");
     int copyIndex = 0;
     while (defaultInput[copyIndex] != 0)
     {
