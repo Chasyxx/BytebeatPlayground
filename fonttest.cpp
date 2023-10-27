@@ -1,3 +1,6 @@
+//     Copyright (C) 2023 Chase T. This program is provided "as-is".
+//     The full copyright and warranty notice can be found in main.cpp.
+
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <string>
