@@ -1,4 +1,4 @@
-//     Bytebeat playground: bytebeat runtime similar to IBNIZ by Viznut
+//     Bytebeat playground: bytebeat runtime using RPN stack
 //     Copyright (C) 2023 Chase T.
 
 //     This program is free software: you can redistribute it and/or modify
@@ -671,7 +671,7 @@ int main(void)
     }
     strcat(defaultInput, "# ");
     strcat(defaultInput, version);
-    strcat(defaultInput, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&w6r||A*");
+    strcat(defaultInput, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*");
     int copyIndex = 0;
     while (defaultInput[copyIndex] != 0)
     {
