@@ -14,12 +14,14 @@
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//     creset200@gmail.com
+
 #include <stdio.h>
 #include <iostream>
 #include <SDL2/SDL.h>
 #include <string>
 #define SAMPLES_SIZE 65536
-// #include <cmath>
+//#define DEBUG
 
 long frame = 0;
 long long bigT = 0;
@@ -203,10 +205,6 @@ uint8_t calculateSample(int t)
         case 'D':
         case 'E':
         case 'F':
-            // if (SP == 255)
-            //     break;
-            // stack[++SP] = 15;
-            // break;
             if (SP == 255)
                 break;
             val = 0;
@@ -302,7 +300,7 @@ uint8_t calculateSample(int t)
             SP--;
             break;
 
-        case 'w':
+        case 't':
             stack[++SP] = t;
             break;
 
@@ -314,7 +312,7 @@ uint8_t calculateSample(int t)
             stack[SP - 1] = val;
             break;
 
-        case '\\':
+        case '#':
             while (input[PC] != 0 && input[PC] != '\n')
                 PC++;
             break;
@@ -390,9 +388,14 @@ void AudioCallback(void *userdata, Uint8 *stream, int len)
 
 char handleKey(int key)
 {
+    #ifdef DEBUG
     std::cout << "key `" << SDL_GetKeyName(key) << "` pressed (" << key << ") [SHIFT " << ::SHIFTKEY << "]" << std::endl;
+    #endif
     if (key >= 'a' && key <= 'z' && ::SHIFTKEY)
-        key -= 32;
+        key -= 32;            // if (SP == 255)
+            //     break;
+            // stack[++SP] = 15;
+            // break;
     switch (key)
     {
     case SDLK_RETURN:
@@ -666,9 +669,9 @@ int main(void)
         std::cerr << "Failed to allocate the memory heap.";
         return -1;
     }
-    strcat(defaultInput, "\\");
+    strcat(defaultInput, "# ");
     strcat(defaultInput, version);
-    strcat(defaultInput, "\n\nwFr1&?w6_*7/:w10r1&?w9*64&:w64&9_*;B/;ww5*&w6r||A*");
+    strcat(defaultInput, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&w6r||A*");
     int copyIndex = 0;
     while (defaultInput[copyIndex] != 0)
     {

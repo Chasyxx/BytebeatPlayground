@@ -12,4 +12,4 @@ However, infrastructure for CMake already exists for whenever that's needed. you
 
 in the top directory, or run build.sh (which will also automatically open Bytebeat Playground).
 
-Most of the commands are similar to the Ideally Bare Numberic expression gIZmo, see http://viznut.fi/ibniz/
+Most of the commands are similar to the Ideally Bare Numberic Impression giZmo, see http://viznut.fi/ibniz/
