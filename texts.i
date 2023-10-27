@@ -1,0 +1,1 @@
+const char* version = "Bytebeat Playground 0.5";
