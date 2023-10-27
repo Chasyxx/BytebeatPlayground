@@ -43,7 +43,7 @@ void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8
     delete rect;
 }
 
-void XORBackground(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
+void drawVisualization(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
 {
     for (int pixelY = 0; pixelY < windowHeight; pixelY++)
     {
@@ -80,7 +80,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     int windowWidth, windowHeight;
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
     long millis = SDL_GetTicks64();
-    XORBackground(windowWidth, windowHeight, millis, renderer, frame);
+    drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
     const int tinyWidth = windowWidth/8;
     for(int i=0; i<95; i++) {
         const int X = i%tinyWidth;

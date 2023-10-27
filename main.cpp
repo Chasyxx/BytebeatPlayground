@@ -1,3 +1,19 @@
+//     Bytebeat playground: bytebeat runtime similar to IBNIZ by Viznut
+//     Copyright (C) 2023 Chase T.
+
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include <stdio.h>
 #include <iostream>
 #include <SDL2/SDL.h>
@@ -9,7 +25,7 @@ long frame = 0;
 long long bigT = 0;
 const double PI = 3.141592653589793;
 
-char *input = "Input!";
+char *input = "Placeholder input";
 
 char *samples;
 
@@ -21,21 +37,6 @@ bool condition = false;
 int cursorPos = 0;
 
 #include "./texts.i"
-
-/*
-  32,! 33," 34,# 35,$ 36,& 38,' 39,( 40,
-) 41,* 42,+ 43,, 44,- 45,. 46,/ 47,0 48,
-1 49,2 50,3 51,4 52,5 53,6 54,7 55,8 56,
-9 57,: 58,; 59,< 60,= 61,> 62,? 63,@ 64,
-A 65,B 66,C 67,D 68,E 69,F 70,G 71,H 72,
-I 73,J 74,K 75,L 76,M 77,N 78,O 79,P 80,
-Q 81,R 82,S 83,T 84,U 85,V 86,W 87,X 88,
-Y 89,Z 90,[ 91,] 93,^ 94,_ 95,` 96,a 97,
-b 98,c 99,d 100,e 101,f 102,g 103,h 104,i 105,
-j 106,k 107,l 108,m 109,n 110,o 111,p 112,q 113,
-r 114,s 115,t 116,u 117,v 118,w 119,x 120,y 121,
-z 122,{ 123,: 58,} 125,~ 126
-*/
 
 const char charCodes[] = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
@@ -109,7 +110,7 @@ void drawFont(SDL_Renderer *r, int idx, int x, int y, bool invert)
     }
 }
 
-void XORBackground(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
+void drawVisualization(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
 {
     for (int pixelY = 0; pixelY < windowHeight; pixelY++)
     {
@@ -129,7 +130,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     int windowWidth, windowHeight;
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
     long millis = SDL_GetTicks64();
-    XORBackground(windowWidth, windowHeight, millis, renderer, frame);
+    drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
     int charIdx = 0;
     char row = 0;
     char col = 0;
@@ -371,22 +372,13 @@ uint8_t calculateSample(int t)
 
 void AudioCallback(void *userdata, Uint8 *stream, int len)
 {
-    // 'userdata' can be used to pass any custom data if needed.
-    // 'stream' is where you should write the audio data.
-    // 'len' is the length of the audio buffer.
-
-    // Cast 'stream' to the appropriate type for your audio data.
-    // For example, if you're working with 16-bit signed audio, cast it to int16_t*.
     uint8_t *audioBuffer = (uint8_t *)stream;
 
-    // Generate audio samples here. You can create a loop to fill the buffer.
+    // Generate samples
     for (int i = 0; i < len; i++)
     {
-        // Example: A simple sine wave at 440 Hz
-        // double t = 2.0 * M_PI * 440.0 * i / 44100.0;
         int t = i + ::bigT;
-        // Bongo
-        uint8_t sample = calculateSample(t); //(((int)(((int)((float)(t) * (float)((t >> 17 & 1) ? (t >> 16 & 1) ? 1.5 : 4.0 / 3.0 : 1)) >> 7 + (~t >> 13 & 1))) & 1) * (256 - (t >> 15 & 1 ? t >> 4 : t >> 5)));
+        uint8_t sample = calculateSample(t);
         audioBuffer[i] = sample;
         samples[(i + ::bigT) % SAMPLES_SIZE] = sample;
         samples[(i + ::bigT + 256) % SAMPLES_SIZE] = 0;
@@ -503,8 +495,6 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                 // Check the key that was pressed
                 SDL_Keysym keysym = event.key.keysym;
                 SDL_Keycode keycode = keysym.sym;
-                // std::cout << "key `" << SDL_GetKeyName(keycode) << "` pressed (" << keycode << ") [SHIFT " << ::SHIFTKEY << "]" << std::endl;
-                // Perform an action based on the pressed key
                 if (keycode == SDLK_ESCAPE)
                 {
                     quit = 1; // Quit the program when the Escape key is pressed
@@ -513,7 +503,6 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                 {
                     if (cursorPos == 0)
                         continue;
-                    //::frame = ::bigT = 0;
                     const int len = strlen(input);
                     char *substr = new char[len - cursorPos + 1];
                     for (int i = 0; i < len - cursorPos; i++)
@@ -566,7 +555,6 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                 }
                 else
                 {
-                    //::frame = ::bigT = 0;
                     const char key = handleKey(keycode);
                     const int len = strlen(input);
                     if (cursorPos == len)
@@ -680,10 +668,11 @@ int main(void)
     strcat(defaultInput, "\\");
     strcat(defaultInput, version);
     strcat(defaultInput, "\n\nwFr1&?w6_*7/:w10r1&?w9*64&:w64&9_*;B/;ww5*&w6r||A*");
+    strcat(defaultInput, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\");
+    strcat(defaultInput, note);
     int copyIndex = 0;
     while (defaultInput[copyIndex] != 0)
     {
-        // std::cout << "Printed " << defaultInput[copyIndex] << " to default input" << std::endl;
         input[copyIndex] = defaultInput[copyIndex];
         copyIndex++;
     }
