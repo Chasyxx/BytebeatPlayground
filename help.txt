@@ -1,0 +1,17 @@
+F1 - Pause audio
+F2 - Reset t to 0
+F3 - Resume audio
+
+The code edit is very rudimentary at the moment
+(can't be hidden, no selection or clipboard-related things...)
+
+The stack idea and most commands come from IBNIZ, which somewhat inspired this program.
+http://viznut.fi/ibniz https://github.com/viznut/IBNIZ/
+
+Unlike ibniz's 16.16 fixpoint, bytebeat playground uses 32 bit integers.
+Numbers are as in IBNIZ, except for that `.` for decimals is not suppourted
++ - * / % & | ^ ~ l d p x w \ , are as in IBNIZ (% or / by 0 returns 0 back)
+_ makes a number negative
+x d p and conditionals (...?...; or ...?...:...;) are as in IBNIZ
+
+despite bring in IBNIZ, q, s, and a aren't added yet, and r is shift right instead of rotate right

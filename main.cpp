@@ -336,6 +336,7 @@ uint8_t calculateSample(int t)
             stack[SP] = stack[SP]==0?1:0;
             break;
         case '?': {
+            if(SP==0) break;
             colon = stack[SP]==0; // Whether to move to the colon or semicolon
             val=0;
             PC++;
@@ -348,6 +349,7 @@ uint8_t calculateSample(int t)
                 PC++;
             }
             PC--;
+            SP--;
             } break;
         case ':':
             val=0;

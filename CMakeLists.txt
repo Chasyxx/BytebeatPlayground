@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.27)
-project(SDLProject)
+project(BytebeatPlayground)
 
 # Find SDL2 using CMake's find_package
 find_package(SDL2 REQUIRED)
