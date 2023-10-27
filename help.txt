@@ -10,7 +10,9 @@ http://viznut.fi/ibniz https://github.com/viznut/IBNIZ/
 
 Unlike ibniz's 16.16 fixpoint, bytebeat playground uses 32 bit integers.
 Numbers are as in IBNIZ, except for that `.` for decimals is not suppourted
-+ - * / % & | ^ ~ l d p x w \ , are as in IBNIZ (% or / by 0 returns 0 back)
++ - * / % & | ^ ~ l d p x, are as in IBNIZ (% or / by 0 returns 0 back)
+# is for comments
+t pushes t to the stack
 _ makes a number negative
 x d p and conditionals (...?...; or ...?...:...;) are as in IBNIZ
 
