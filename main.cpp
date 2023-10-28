@@ -124,8 +124,8 @@ void drawVisualization(int windowWidth, int windowHeight, long millis, SDL_Rende
         for (int pixelX = 0; pixelX < windowWidth; pixelX++)
         {
             const double redMultiplier = SDL_sin(frame / 100.0 + (PI * 0 / 3)) / 2 + 0.5;
-            const double greenMultiplier = SDL_sin(frame / 100.0 + (PI * 1 / 3)) / 2 + 0.5;
-            const double blueMultiplier = SDL_sin(frame / 100.0 + (PI * 2 / 3)) / 2 + 0.5;
+            const double greenMultiplier = SDL_sin(frame / 100.0 + (PI * 2 / 3)) / 2 + 0.5;
+            const double blueMultiplier = SDL_sin(frame / 100.0 + (PI * 4 / 3)) / 2 + 0.5;
             const Uint8 pixel = samples[(pixelX + pixelY * 256) % SAMPLES_SIZE]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
             makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
         }
@@ -338,6 +338,9 @@ uint8_t calculateSample(int t)
             break;
         case '=':
             stack[SP] = stack[SP] == 0 ? 1 : 0;
+            break;
+        case '\\':
+            stack[SP] = stack[SP] != 0 ? 1 : 0;
             break;
         case '?':
         {
