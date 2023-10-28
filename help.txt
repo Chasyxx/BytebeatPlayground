@@ -2,6 +2,9 @@ F1 - Pause audio
 F2 - Reset t to 0
 F3 - Resume audio
 
+Ctrl+T - Switch between no background and a black background for text.
+Ctrl+S - Save (see line 24)
+
 The code edit is very rudimentary at the moment
 (can't be hidden, no selection or clipboard-related things...)
 
@@ -17,3 +20,12 @@ _ makes a number negative
 x d p and conditionals (...?...; or ...?...:...;) are as in IBNIZ
 
 despite bring in IBNIZ, q, s, and a aren't added yet, and r is shift right instead of rotate right
+
+add ##<filepath> to the begining of your code to save it to that location. e.g:
+    ##testfile.bp
+    ddAr&/
+
+To load a file, simply add it's name to the command line.
+    ./exec testfie.bp
+
+

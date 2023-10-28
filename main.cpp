@@ -18,10 +18,11 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
 #include <SDL2/SDL.h>
 #include <string>
 #define SAMPLES_SIZE 65536
-//#define DEBUG
+// #define DEBUG
 
 long frame = 0;
 long long bigT = 0;
@@ -34,7 +35,7 @@ char *samples;
 bool SHIFTKEY = false;
 bool CTRLKEY = false;
 
-bool condition = false;
+bool opaqueText = false;
 
 int cursorPos = 0;
 
@@ -97,8 +98,12 @@ void drawFontDot(SDL_Renderer *r, int idx, int x, int y, bool invert)
     // const int XX = X / 8 * 8;
     // const int YY = Y / 8 * 8;
     const int arrayIndex = idx * 8 + Y;
-    makeDot(r, x, y, font[arrayIndex] << X & 128 ? invert ? 0 : 255 : invert ? 255
-                                                                             : 0);
+    const bool active = font[arrayIndex] << X & 128 ? invert ? false : true : invert ? true
+                                                                                     : false;
+    if (active)
+        makeDot(r, x, y, 255);
+    if (!active && ::opaqueText)
+        makeDot(r, x, y, 0);
 }
 
 void drawFont(SDL_Renderer *r, int idx, int x, int y, bool invert)
@@ -326,37 +331,52 @@ uint8_t calculateSample(int t)
             break;
 
         case '<':
-            stack[SP] = SDL_max(0,stack[SP]);
+            stack[SP] = SDL_max(0, stack[SP]);
             break;
         case '>':
-            stack[SP] = SDL_min(0,stack[SP]);
+            stack[SP] = SDL_min(0, stack[SP]);
             break;
         case '=':
-            stack[SP] = stack[SP]==0?1:0;
+            stack[SP] = stack[SP] == 0 ? 1 : 0;
             break;
-        case '?': {
-            if(SP==0) break;
-            colon = stack[SP]==0; // Whether to move to the colon or semicolon
-            val=0;
+        case '?':
+        {
+            if (SP == 0)
+                break;
+            colon = stack[SP] == 0; // Whether to move to the colon or semicolon
+            val = 0;
             PC++;
-            if(colon)
-            while((val!=0||input[PC]!=';')&&input[PC]!=0) {
-                if(val<0) break;
-                if(input[PC]=='?') val++;
-                if(input[PC]==';') val--;
-                if(val==0&&input[PC]==':') { PC++; break; };
-                PC++;
-            }
+            if (colon)
+                while ((val != 0 || input[PC] != ';') && input[PC] != 0)
+                {
+                    if (val < 0)
+                        break;
+                    if (input[PC] == '?')
+                        val++;
+                    if (input[PC] == ';')
+                        val--;
+                    if (val == 0 && input[PC] == ':')
+                    {
+                        PC++;
+                        break;
+                    };
+                    PC++;
+                }
             PC--;
             SP--;
-            } break;
+        }
+        break;
         case ':':
-            val=0;
+            val = 0;
             PC++;
-            while((val!=0||input[PC]!=';')&&input[PC]!=0) {
-                if(val<0) break;
-                if(input[PC]=='?') val++;
-                if(input[PC]==';') val--;
+            while ((val != 0 || input[PC] != ';') && input[PC] != 0)
+            {
+                if (val < 0)
+                    break;
+                if (input[PC] == '?')
+                    val++;
+                if (input[PC] == ';')
+                    val--;
                 PC++;
             }
             break;
@@ -388,14 +408,14 @@ void AudioCallback(void *userdata, Uint8 *stream, int len)
 
 char handleKey(int key)
 {
-    #ifdef DEBUG
+#ifdef DEBUG
     std::cout << "key `" << SDL_GetKeyName(key) << "` pressed (" << key << ") [SHIFT " << ::SHIFTKEY << "]" << std::endl;
-    #endif
+#endif
     if (key >= 'a' && key <= 'z' && ::SHIFTKEY)
-        key -= 32;            // if (SP == 255)
-            //     break;
-            // stack[++SP] = 15;
-            // break;
+        key -= 32; // if (SP == 255)
+                   //     break;
+                   // stack[++SP] = 15;
+                   // break;
     switch (key)
     {
     case SDLK_RETURN:
@@ -498,88 +518,129 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                 // Check the key that was pressed
                 SDL_Keysym keysym = event.key.keysym;
                 SDL_Keycode keycode = keysym.sym;
-                if (keycode == SDLK_ESCAPE)
+                if (::CTRLKEY)
                 {
-                    quit = 1; // Quit the program when the Escape key is pressed
-                }
-                else if (keycode == SDLK_BACKSPACE)
-                {
-                    if (cursorPos == 0)
-                        continue;
-                    const int len = strlen(input);
-                    char *substr = new char[len - cursorPos + 1];
-                    for (int i = 0; i < len - cursorPos; i++)
+                    if (keycode == 't')
                     {
-                        substr[i] = input[i + cursorPos];
+                        opaqueText = !opaqueText;
                     }
-                    substr[len - cursorPos] = 0; // Null terminator
-                    for (int i = 0; i < len - cursorPos + 1; i++)
+                    else if (keycode == 's')
                     {
-                        input[i + cursorPos - 1] = substr[i];
+                        if(input[0]=='#'&&input[1]=='#'){
+                            int endIndex = 2;
+                            while(input[endIndex]!='\n'&&input[endIndex]!='\0') endIndex++;
+                            if(input[endIndex]=='\0') continue;
+                            char* buffer = new char[256];
+                            for(int i=0;i<endIndex-2;i++) {
+                                buffer[i] = input[i+2];
+                            }
+                            buffer[endIndex-2] = '\0'; // Null terminator
+                            std::ofstream file(buffer);
+                            delete[] buffer;
+                            buffer = new char[1024];
+                            int i=0;
+                            while(input[i]!=0) i++;
+                            std::cout << std::boolalpha << file.is_open() << buffer << endIndex << std::endl;
+                            if(file.is_open()){
+                                file.write(input,i);
+                            }
+                            delete[] buffer;
+                        } else {
+                            char* buffer = new char[1024];
+                            for(int i=0;i<1024;i++) buffer[i]=0;
+                            strcat(buffer,"##file.bp\n# ^^^^^^^\n# Put your save name here!\n\n");
+                            strcat(buffer,input);
+                            strcpy(input,buffer);
+                            delete[] buffer;
+                            continue;
+                        }
                     }
-                    delete[] substr;
-                    cursorPos = SDL_max(0, cursorPos - 1);
-                }
-                else if (keycode == SDLK_F1)
-                {
-                    SDL_PauseAudio(1);
-                }
-                else if (keycode == SDLK_F2)
-                {
-                    ::frame = ::bigT = 0;
-                }
-                else if (keycode == SDLK_F3)
-                {
-                    SDL_PauseAudio(0);
-                }
-                else if (keycode == SDLK_LSHIFT || keycode == SDLK_RSHIFT)
-                {
-                    ::SHIFTKEY = true;
-                }
-                else if (keycode == SDLK_LEFT)
-                {
-                    cursorPos = SDL_max(0, cursorPos - 1);
-                }
-                else if (keycode == SDLK_RIGHT)
-                {
-                    cursorPos = SDL_min(strlen(input), cursorPos + 1);
-                }
-                else if (keycode == SDLK_UP)
-                {
-                    cursorPos = SDL_max(0, cursorPos - 8);
-                }
-                else if (keycode == SDLK_DOWN)
-                {
-                    cursorPos = SDL_min(strlen(input), cursorPos + 8);
-                }
-                else if (keycode == SDLK_LCTRL || keycode == SDLK_RCTRL)
-                {
-                    ::CTRLKEY = true;
                 }
                 else
                 {
-                    const char key = handleKey(keycode);
-                    const int len = strlen(input);
-                    if (cursorPos == len)
+                    if (keycode == SDLK_ESCAPE)
                     {
-                        input[len] = key;
+                        quit = 1; // Quit the program when the Escape key is pressed
                     }
-                    else
+                    else if (keycode == SDLK_BACKSPACE)
                     {
+                        if (cursorPos == 0)
+                            continue;
+                        const int len = strlen(input);
                         char *substr = new char[len - cursorPos + 1];
                         for (int i = 0; i < len - cursorPos; i++)
                         {
                             substr[i] = input[i + cursorPos];
                         }
                         substr[len - cursorPos] = 0; // Null terminator
-                        input[cursorPos] = key;
                         for (int i = 0; i < len - cursorPos + 1; i++)
                         {
-                            input[i + cursorPos + 1] = substr[i];
+                            input[i + cursorPos - 1] = substr[i];
                         }
                         delete[] substr;
+                        cursorPos = SDL_max(0, cursorPos - 1);
                     }
-                    cursorPos = SDL_min(strlen(input), cursorPos + 1);
+                    else if (keycode == SDLK_F1)
+                    {
+                        SDL_PauseAudio(1);
+                    }
+                    else if (keycode == SDLK_F2)
+                    {
+                        ::frame = ::bigT = 0;
+                    }
+                    else if (keycode == SDLK_F3)
+                    {
+                        SDL_PauseAudio(0);
+                    }
+                    else if (keycode == SDLK_LSHIFT || keycode == SDLK_RSHIFT)
+                    {
+                        ::SHIFTKEY = true;
+                    }
+                    else if (keycode == SDLK_LEFT)
+                    {
+                        cursorPos = SDL_max(0, cursorPos - 1);
+                    }
+                    else if (keycode == SDLK_RIGHT)
+                    {
+                        cursorPos = SDL_min(strlen(input), cursorPos + 1);
+                    }
+                    else if (keycode == SDLK_UP)
+                    {
+                        cursorPos = SDL_max(0, cursorPos - 8);
+                    }
+                    else if (keycode == SDLK_DOWN)
+                    {
+                        cursorPos = SDL_min(strlen(input), cursorPos + 8);
+                    }
+                    else if (keycode == SDLK_LCTRL || keycode == SDLK_RCTRL)
+                    {
+                        ::CTRLKEY = true;
+                    }
+                    else
+                    {
+                        const char key = handleKey(keycode);
+                        const int len = strlen(input);
+                        if (cursorPos == len)
+                        {
+                            input[len] = key;
+                        }
+                        else
+                        {
+                            char *substr = new char[len - cursorPos + 1];
+                            for (int i = 0; i < len - cursorPos; i++)
+                            {
+                                substr[i] = input[i + cursorPos];
+                            }
+                            substr[len - cursorPos] = 0; // Null terminator
+                            input[cursorPos] = key;
+                            for (int i = 0; i < len - cursorPos + 1; i++)
+                            {
+                                input[i + cursorPos + 1] = substr[i];
+                            }
+                            delete[] substr;
+                        }
+                        cursorPos = SDL_min(strlen(input), cursorPos + 1);
+                    }
                 }
             }
             else if (event.type == SDL_KEYUP)
@@ -608,7 +669,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
     }
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     std::cout << version << std::endl;
     std::cout << "Initial initialization..." << std::endl;
@@ -627,6 +688,10 @@ int main(void)
     for (int i = 0; i < 1024; i++)
     {
         input[i] = '\0';
+    }
+    for (int i = 0; i < argc; i++)
+    {
+        std::cout << argv[i] << std::endl;
     }
     std::cout << "Initialazing SDL...\n";
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
@@ -661,24 +726,43 @@ int main(void)
     audioSpec.channels = 1;
     audioSpec.samples = 1024;
     audioSpec.callback = AudioCallback;
-    char *defaultInput = new char[1024];
-    for (int i = 0; i < 1024; i++)
-        defaultInput[i] = 0;
-    if (defaultInput == nullptr)
+    if (argc > 1)
     {
-        std::cerr << "Failed to allocate the memory heap.";
-        return -1;
+        const char *filePath = argv[1];
+        std::ifstream file(filePath);
+        if (file.is_open())
+        {
+            file.read(input, 1024);
+        }
+        else
+        {
+            char *error = new char[1024];
+            for (int i = 0; i < 1024; i++)
+                error[i] = 0;
+            strcat(error, "# Couldn't open the file:\n# ");
+            strcat(error, argv[1]);
+            strcat(error, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*~");
+            ::opaqueText=true;
+            strcpy(input,error);
+            delete[] error;
+        }
     }
-    strcat(defaultInput, "# ");
-    strcat(defaultInput, version);
-    strcat(defaultInput, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*");
-    int copyIndex = 0;
-    while (defaultInput[copyIndex] != 0)
+    else
     {
-        input[copyIndex] = defaultInput[copyIndex];
-        copyIndex++;
+        char *defaultInput = new char[1024];
+        for (int i = 0; i < 1024; i++)
+            defaultInput[i] = 0;
+        if (defaultInput == nullptr)
+        {
+            std::cerr << "Failed to allocate the memory heap.";
+            return -1;
+        }
+        strcat(defaultInput, "# ");
+        strcat(defaultInput, version);
+        strcat(defaultInput, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*~");
+        strcpy(input,defaultInput);
+        delete[] defaultInput;
     }
-    delete[] defaultInput;
 
     if (SDL_OpenAudio(&audioSpec, NULL) < 0)
     {
