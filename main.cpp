@@ -22,6 +22,11 @@
 #include <SDL2/SDL.h>
 #include <string>
 #define SAMPLES_SIZE 65536
+#define STACK_UNDERFLOW_CHECK() if(SP == 0) {::errorText = "Stack underflow"; break;}
+#define STACK_OVERFLOW_CHECK() if(SP == 255) {::errorText = "Stack overflow"; break;}
+
+constexpr SDL_Color WHITE_TEXT{255,255,255};
+constexpr SDL_Color RED_TEXT{255,0,0};
 // #define DEBUG
 
 long frame = 0;
@@ -29,6 +34,7 @@ long long bigT = 0;
 const double PI = 3.141592653589793;
 
 char *input = "Placeholder input";
+char *errorText = "Placeholder error";
 
 char *samples;
 
@@ -55,123 +61,10 @@ int chartoIdx(char c)
     return i;
 }
 
-const int font[] = {
-#include "font.ipp"
-};
-
-void makeDot(SDL_Renderer *renderer, int x, int y, SDL_Color color)
-{
-    const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    SDL_RenderDrawRect(renderer, rect);
-    delete rect;
-}
-
-void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 brightness)
-{
-    const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
-    SDL_SetRenderDrawColor(renderer, brightness, brightness, brightness, 255U);
-    SDL_RenderDrawRect(renderer, rect);
-    delete rect;
-}
-
-void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue)
-{
-    const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
-    SDL_SetRenderDrawColor(renderer, red, green, blue, 255U);
-    SDL_RenderDrawRect(renderer, rect);
-    delete rect;
-}
-
-void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue, Uint8 alpha)
-{
-    const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
-    SDL_SetRenderDrawColor(renderer, red, green, blue, alpha);
-    SDL_RenderDrawRect(renderer, rect);
-    delete rect;
-}
-
-void drawFontDot(SDL_Renderer *r, int idx, int x, int y, bool invert)
-{
-    const int X = x % 8;
-    const int Y = y % 8;
-    // const int XX = X / 8 * 8;
-    // const int YY = Y / 8 * 8;
-    const int arrayIndex = idx * 8 + Y;
-    const bool active = font[arrayIndex] << X & 128 ? invert ? false : true : invert ? true
-                                                                                     : false;
-    if (active)
-        makeDot(r, x, y, 255);
-    if (!active && ::opaqueText)
-        makeDot(r, x, y, 0);
-}
-
-void drawFont(SDL_Renderer *r, int idx, int x, int y, bool invert)
-{
-    for (int i = 0; i < 8; i++)
-    {
-        for (int j = 0; j < 8; j++)
-        {
-            drawFontDot(r, idx, x + i, y + j, invert);
-        }
-    }
-}
-
-void drawVisualization(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
-{
-    for (int pixelY = 0; pixelY < windowHeight; pixelY++)
-    {
-        for (int pixelX = 0; pixelX < windowWidth; pixelX++)
-        {
-            const double redMultiplier = SDL_sin(frame / 100.0 + (PI * 0 / 3)) / 2 + 0.5;
-            const double greenMultiplier = SDL_sin(frame / 100.0 + (PI * 2 / 3)) / 2 + 0.5;
-            const double blueMultiplier = SDL_sin(frame / 100.0 + (PI * 4 / 3)) / 2 + 0.5;
-            const Uint8 pixel = samples[(pixelX + pixelY * 256) % SAMPLES_SIZE]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
-            makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
-        }
-    }
-}
-
-void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
-{
-    int windowWidth, windowHeight;
-    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-    long millis = SDL_GetTicks64();
-    drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
-    int charIdx = 0;
-    char row = 0;
-    char col = 0;
-    while (input[charIdx] != 0)
-    {
-        if (input[charIdx] == '\n')
-        {
-            if (cursorPos == charIdx)
-            {
-                drawFont(renderer, 0, col * 8, row * 8, 1);
-            }
-            col = 0;
-            row++;
-            charIdx++;
-        }
-        else
-        {
-            drawFont(renderer, chartoIdx(input[charIdx++]), col * 8, row * 8, cursorPos == charIdx);
-            col++;
-            if (col == 32)
-            {
-                col = 0;
-                row++;
-            }
-        }
-    }
-    if (cursorPos == charIdx)
-    {
-        drawFont(renderer, 0, col * 8, row * 8, 1);
-    }
-}
 
 uint8_t calculateSample(int t)
 {
+    // ::errorText="";
     int PC = 0;
     int *stack = new int[256];
     int SP = 0;
@@ -182,14 +75,13 @@ uint8_t calculateSample(int t)
         exit(-1);
     }
     stack[0] = t;
-    while (input[PC] != 0)
+    while (::input[PC] != 0)
     {
         bool colon = false;
-        switch (input[PC])
+        switch (::input[PC])
         {
         case 'd':
-            if (SP == 255)
-                break;
+            STACK_OVERFLOW_CHECK();
             stack[SP + 1] = stack[SP];
             SP++;
             break;
@@ -210,12 +102,11 @@ uint8_t calculateSample(int t)
         case 'D':
         case 'E':
         case 'F':
-            if (SP == 255)
-                break;
+            STACK_OVERFLOW_CHECK();
             val = 0;
-            while (std::isalnum(input[PC]) && input[PC] < 'G')
+            while (std::isalnum(::input[PC]) && ::input[PC] < 'G')
             {
-                char code = input[PC];
+                char code = ::input[PC];
                 if (code >= 'A')
                     code -= 7;
                 val = (val << 4) + code - 48;
@@ -226,56 +117,47 @@ uint8_t calculateSample(int t)
             break;
 
         case 'r':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] >>= stack[SP];
             SP--;
             break;
         case 'l':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] <<= stack[SP];
             SP--;
             break;
         case '&':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] &= stack[SP];
             SP--;
             break;
         case '|':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] |= stack[SP];
             SP--;
             break;
         case '^':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] ^= stack[SP];
             SP--;
             break;
         case '+':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] += stack[SP];
             SP--;
             break;
         case '-':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] -= stack[SP];
             SP--;
             break;
         case '*':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             stack[SP - 1] *= stack[SP];
             SP--;
             break;
         case '/':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             if (stack[SP] == 0)
             {
                 stack[SP - 1] = 0;
@@ -287,8 +169,7 @@ uint8_t calculateSample(int t)
             break;
 
         case '%':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             if (stack[SP] == 0)
             {
                 stack[SP - 1] = 0;
@@ -300,25 +181,24 @@ uint8_t calculateSample(int t)
             break;
 
         case 'p':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             SP--;
             break;
 
         case 't':
+            STACK_OVERFLOW_CHECK();
             stack[++SP] = t;
             break;
 
         case 'x':
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             val = stack[SP];
             stack[SP] = stack[SP - 1];
             stack[SP - 1] = val;
             break;
 
         case '#':
-            while (input[PC] != 0 && input[PC] != '\n')
+            while (::input[PC] != 0 && ::input[PC] != '\n')
                 PC++;
             break;
 
@@ -344,21 +224,20 @@ uint8_t calculateSample(int t)
             break;
         case '?':
         {
-            if (SP == 0)
-                break;
+            STACK_UNDERFLOW_CHECK();
             colon = stack[SP] == 0; // Whether to move to the colon or semicolon
             val = 0;
             PC++;
             if (colon)
-                while ((val != 0 || input[PC] != ';') && input[PC] != 0)
+                while ((val != 0 || ::input[PC] != ';') && ::input[PC] != 0)
                 {
                     if (val < 0)
                         break;
-                    if (input[PC] == '?')
+                    if (::input[PC] == '?')
                         val++;
-                    if (input[PC] == ';')
+                    if (::input[PC] == ';')
                         val--;
-                    if (val == 0 && input[PC] == ':')
+                    if (val == 0 && ::input[PC] == ':')
                     {
                         PC++;
                         break;
@@ -372,13 +251,13 @@ uint8_t calculateSample(int t)
         case ':':
             val = 0;
             PC++;
-            while ((val != 0 || input[PC] != ';') && input[PC] != 0)
+            while ((val != 0 || ::input[PC] != ';') && ::input[PC] != 0)
             {
                 if (val < 0)
                     break;
-                if (input[PC] == '?')
+                if (::input[PC] == '?')
                     val++;
-                if (input[PC] == ';')
+                if (::input[PC] == ';')
                     val--;
                 PC++;
             }
@@ -391,22 +270,145 @@ uint8_t calculateSample(int t)
     return result;
 }
 
-void AudioCallback(void *userdata, Uint8 *stream, int len)
+namespace audiovisual
 {
-    uint8_t *audioBuffer = (uint8_t *)stream;
+    const int font[] = {
+#include "font.ipp"
+    };
 
-    // Generate samples
-    for (int i = 0; i < len; i++)
+    void makeDot(SDL_Renderer *renderer, int x, int y, SDL_Color color)
     {
-        int t = i + ::bigT;
-        uint8_t sample = calculateSample(t);
-        audioBuffer[i] = sample;
-        samples[(i + ::bigT) % SAMPLES_SIZE] = sample;
-        samples[(i + ::bigT + 256) % SAMPLES_SIZE] = 0;
-        samples[(i + ::bigT + 512) % SAMPLES_SIZE] = 128;
-        samples[(i + ::bigT + 768) % SAMPLES_SIZE] = 255;
+        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
+        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+        SDL_RenderDrawRect(renderer, rect);
+        delete rect;
     }
-    ::bigT += len;
+
+    void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 brightness)
+    {
+        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
+        SDL_SetRenderDrawColor(renderer, brightness, brightness, brightness, 255U);
+        SDL_RenderDrawRect(renderer, rect);
+        delete rect;
+    }
+
+    void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue)
+    {
+        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
+        SDL_SetRenderDrawColor(renderer, red, green, blue, 255U);
+        SDL_RenderDrawRect(renderer, rect);
+        delete rect;
+    }
+
+    void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue, Uint8 alpha)
+    {
+        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
+        SDL_SetRenderDrawColor(renderer, red, green, blue, alpha);
+        SDL_RenderDrawRect(renderer, rect);
+        delete rect;
+    }
+
+    void drawFontDot(SDL_Renderer *r, int idx, int x, int y, SDL_Color color, bool invert)
+    {
+        const int X = x % 8;
+        const int Y = y % 8;
+        // const int XX = X / 8 * 8;
+        // const int YY = Y / 8 * 8;
+        const int arrayIndex = idx * 8 + Y;
+        const bool active = font[arrayIndex] << X & 128 ? invert ? false : true : invert ? true
+                                                                                         : false;
+        if (active)
+            makeDot(r, x, y, color);
+        if (!active && ::opaqueText)
+            makeDot(r, x, y, color.r^255, color.g^255, color.b^255);
+    }
+
+    void drawFont(SDL_Renderer *r, int idx, int x, int y, SDL_Color color, bool invert)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                drawFontDot(r, idx, x + i, y + j, color, invert);
+            }
+        }
+    }
+
+    void drawVisualization(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
+    {
+        for (int pixelY = 0; pixelY < windowHeight; pixelY++)
+        {
+            for (int pixelX = 0; pixelX < windowWidth; pixelX++)
+            {
+                const double redMultiplier = SDL_sin(frame / 100.0 + (PI * 0 / 3)) / 2 + 0.5;
+                const double greenMultiplier = SDL_sin(frame / 100.0 + (PI * 2 / 3)) / 2 + 0.5;
+                const double blueMultiplier = SDL_sin(frame / 100.0 + (PI * 4 / 3)) / 2 + 0.5;
+                const Uint8 pixel = samples[(pixelX + pixelY * 256) % SAMPLES_SIZE]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
+                makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
+            }
+        }
+    }
+
+    void AudioCallback(void *userdata, Uint8 *stream, int len)
+    {
+        uint8_t *audioBuffer = (uint8_t *)stream;
+
+        // Generate samples
+        for (int i = 0; i < len; i++)
+        {
+            int t = i + ::bigT;
+            uint8_t sample = calculateSample(t);
+            audioBuffer[i] = sample;
+            samples[(i + ::bigT) % SAMPLES_SIZE] = sample;
+            samples[(i + ::bigT + 256) % SAMPLES_SIZE] = 0;
+            samples[(i + ::bigT + 512) % SAMPLES_SIZE] = 128;
+            samples[(i + ::bigT + 768) % SAMPLES_SIZE] = 255;
+        }
+        ::bigT += len;
+    }
+};
+
+void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
+{
+    int windowWidth, windowHeight;
+    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+    long millis = SDL_GetTicks64();
+    audiovisual::drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
+    int charIdx = 0;
+    char row = 0;
+    char col = 0;
+    while (::input[charIdx] != 0)
+    {
+        if (::input[charIdx] == '\n')
+        {
+            if (cursorPos == charIdx)
+            {
+                audiovisual::drawFont(renderer, 0, col * 8, row * 8, WHITE_TEXT, 1);
+            }
+            col = 0;
+            row++;
+            charIdx++;
+        }
+        else
+        {
+            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx++]), col * 8, row * 8, WHITE_TEXT, cursorPos == charIdx);
+            col++;
+            if (col == 32)
+            {
+                col = 0;
+                row++;
+            }
+        }
+    }
+    if (cursorPos == charIdx)
+    {
+        audiovisual::drawFont(renderer, 0, col * 8, row * 8, WHITE_TEXT, 1);
+    }
+    charIdx=0;
+    while(::errorText[charIdx]!=0)
+    {
+        audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), charIdx*8, 248, RED_TEXT, 0);
+    }
 }
 
 char handleKey(int key)
@@ -529,31 +531,40 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     }
                     else if (keycode == 's')
                     {
-                        if(input[0]=='#'&&input[1]=='#'){
+                        if (::input[0] == '#' && ::input[1] == '#')
+                        {
                             int endIndex = 2;
-                            while(input[endIndex]!='\n'&&input[endIndex]!='\0') endIndex++;
-                            if(input[endIndex]=='\0') continue;
-                            char* buffer = new char[256];
-                            for(int i=0;i<endIndex-2;i++) {
-                                buffer[i] = input[i+2];
+                            while (::input[endIndex] != '\n' && ::input[endIndex] != '\0')
+                                endIndex++;
+                            if (::input[endIndex] == '\0')
+                                continue;
+                            char *buffer = new char[256];
+                            for (int i = 0; i < endIndex - 2; i++)
+                            {
+                                buffer[i] = ::input[i + 2];
                             }
-                            buffer[endIndex-2] = '\0'; // Null terminator
+                            buffer[endIndex - 2] = '\0'; // Null terminator
                             std::ofstream file(buffer);
                             delete[] buffer;
                             buffer = new char[1024];
-                            int i=0;
-                            while(input[i]!=0) i++;
+                            int i = 0;
+                            while (::input[i] != 0)
+                                i++;
                             std::cout << std::boolalpha << file.is_open() << buffer << endIndex << std::endl;
-                            if(file.is_open()){
-                                file.write(input,i);
+                            if (file.is_open())
+                            {
+                                file.write(::input, i);
                             }
                             delete[] buffer;
-                        } else {
-                            char* buffer = new char[1024];
-                            for(int i=0;i<1024;i++) buffer[i]=0;
-                            strcat(buffer,"##file.bp\n# ^^^^^^^\n# Put your save name here!\n\n");
-                            strcat(buffer,input);
-                            strcpy(input,buffer);
+                        }
+                        else
+                        {
+                            char *buffer = new char[1024];
+                            for (int i = 0; i < 1024; i++)
+                                buffer[i] = 0;
+                            strcat(buffer, "##file.bp\n\n");
+                            strcat(buffer, ::input);
+                            strcpy(::input, buffer);
                             delete[] buffer;
                             continue;
                         }
@@ -569,19 +580,20 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     {
                         if (cursorPos == 0)
                             continue;
-                        const int len = strlen(input);
+                        const int len = strlen(::input);
                         char *substr = new char[len - cursorPos + 1];
                         for (int i = 0; i < len - cursorPos; i++)
                         {
-                            substr[i] = input[i + cursorPos];
+                            substr[i] = ::input[i + cursorPos];
                         }
                         substr[len - cursorPos] = 0; // Null terminator
                         for (int i = 0; i < len - cursorPos + 1; i++)
                         {
-                            input[i + cursorPos - 1] = substr[i];
+                            ::input[i + cursorPos - 1] = substr[i];
                         }
                         delete[] substr;
                         cursorPos = SDL_max(0, cursorPos - 1);
+                        ::errorText="";
                     }
                     else if (keycode == SDLK_F1)
                     {
@@ -605,7 +617,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     }
                     else if (keycode == SDLK_RIGHT)
                     {
-                        cursorPos = SDL_min(strlen(input), cursorPos + 1);
+                        cursorPos = SDL_min(strlen(::input), cursorPos + 1);
                     }
                     else if (keycode == SDLK_UP)
                     {
@@ -613,7 +625,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     }
                     else if (keycode == SDLK_DOWN)
                     {
-                        cursorPos = SDL_min(strlen(input), cursorPos + 8);
+                        cursorPos = SDL_min(strlen(::input), cursorPos + 8);
                     }
                     else if (keycode == SDLK_LCTRL || keycode == SDLK_RCTRL)
                     {
@@ -622,27 +634,28 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     else
                     {
                         const char key = handleKey(keycode);
-                        const int len = strlen(input);
+                        const int len = strlen(::input);
                         if (cursorPos == len)
                         {
-                            input[len] = key;
+                            ::input[len] = key;
                         }
                         else
                         {
                             char *substr = new char[len - cursorPos + 1];
                             for (int i = 0; i < len - cursorPos; i++)
                             {
-                                substr[i] = input[i + cursorPos];
+                                substr[i] = ::input[i + cursorPos];
                             }
                             substr[len - cursorPos] = 0; // Null terminator
-                            input[cursorPos] = key;
+                            ::input[cursorPos] = key;
                             for (int i = 0; i < len - cursorPos + 1; i++)
                             {
-                                input[i + cursorPos + 1] = substr[i];
+                                ::input[i + cursorPos + 1] = substr[i];
                             }
                             delete[] substr;
                         }
-                        cursorPos = SDL_min(strlen(input), cursorPos + 1);
+                        cursorPos = SDL_min(strlen(::input), cursorPos + 1);
+                        ::errorText="";
                     }
                 }
             }
@@ -676,21 +689,23 @@ int main(int argc, char **argv)
 {
     std::cout << version << std::endl;
     std::cout << "Initial initialization..." << std::endl;
-    input = (char *)malloc(1024);
-    if (input == nullptr)
+    ::input = new char[1024];
+    ::errorText = new char[32];
+    if (::input == nullptr)
     {
         std::cerr << "Failed to allocate the memory heap.";
         return -1;
     }
-    samples = (char *)malloc(SAMPLES_SIZE);
+    if (::errorText == nullptr)
+    {
+        std::cerr << "Failed to allocate the memory heap.";
+        return -1;
+    }
+    samples = new char[SAMPLES_SIZE];
     if (samples == nullptr)
     {
         std::cerr << "Failed to allocate the memory heap.";
         return -1;
-    }
-    for (int i = 0; i < 1024; i++)
-    {
-        input[i] = '\0';
     }
     for (int i = 0; i < argc; i++)
     {
@@ -728,14 +743,14 @@ int main(int argc, char **argv)
     audioSpec.format = AUDIO_U8;
     audioSpec.channels = 1;
     audioSpec.samples = 1024;
-    audioSpec.callback = AudioCallback;
+    audioSpec.callback = audiovisual::AudioCallback;
     if (argc > 1)
     {
         const char *filePath = argv[1];
         std::ifstream file(filePath);
         if (file.is_open())
         {
-            file.read(input, 1024);
+            file.read(::input, 1024);
         }
         else
         {
@@ -745,8 +760,8 @@ int main(int argc, char **argv)
             strcat(error, "# Couldn't open the file:\n# ");
             strcat(error, argv[1]);
             strcat(error, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*~");
-            ::opaqueText=true;
-            strcpy(input,error);
+            ::opaqueText = true;
+            strcpy(::input, error);
             delete[] error;
         }
     }
@@ -763,7 +778,7 @@ int main(int argc, char **argv)
         strcat(defaultInput, "# ");
         strcat(defaultInput, version);
         strcat(defaultInput, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*~");
-        strcpy(input,defaultInput);
+        strcpy(::input, defaultInput);
         delete[] defaultInput;
     }
 
