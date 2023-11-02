@@ -22,11 +22,21 @@
 #include <SDL2/SDL.h>
 #include <string>
 #define SAMPLES_SIZE 65536
-#define STACK_UNDERFLOW_CHECK() if(SP == 0) {::errorText = "Stack underflow"; break;}
-#define STACK_OVERFLOW_CHECK() if(SP == 255) {::errorText = "Stack overflow"; break;}
+#define STACK_UNDERFLOW_CHECK()                 \
+    if (SP == 0)                                \
+    {                                           \
+        strcpy(::errorText, "Stack underflow"); \
+        break;                                  \
+    }
+#define STACK_OVERFLOW_CHECK()                 \
+    if (SP == 255)                             \
+    {                                          \
+        strcpy(::errorText, "Stack overflow"); \
+        break;                                 \
+    }
 
-constexpr SDL_Color WHITE_TEXT{255,255,255};
-constexpr SDL_Color RED_TEXT{255,0,0};
+constexpr SDL_Color WHITE_TEXT{255, 255, 255};
+constexpr SDL_Color RED_TEXT{255, 0, 0};
 // #define DEBUG
 
 long frame = 0;
@@ -61,14 +71,13 @@ int chartoIdx(char c)
     return i;
 }
 
-
 uint8_t calculateSample(int t)
 {
-    // ::errorText="";
     int PC = 0;
     int *stack = new int[256];
     int SP = 0;
     int val = 0;
+    char *vals = "Unknown command !";
     if (stack == nullptr)
     {
         std::cerr << "Memory stack allocation failiure" << std::endl;
@@ -244,6 +253,8 @@ uint8_t calculateSample(int t)
                     };
                     PC++;
                 }
+            if (::input[PC] == 0)
+                strcpy(::errorText, "Conditionals must end with ;");
             PC--;
             SP--;
         }
@@ -254,13 +265,31 @@ uint8_t calculateSample(int t)
             while ((val != 0 || ::input[PC] != ';') && ::input[PC] != 0)
             {
                 if (val < 0)
+                {
+                    strcpy(::errorText, "; with no conditional to match");
                     break;
+                }
                 if (::input[PC] == '?')
                     val++;
                 if (::input[PC] == ';')
                     val--;
                 PC++;
             }
+            if (::input[PC] == 0)
+                strcpy(::errorText, "Conditionals must end with ;");
+            break;
+        case ';':
+        case ' ':
+        case '\n':
+        case ',':
+            break;
+        default:
+            vals = new char[32];
+            strcpy(vals, "Unknown command ");
+            vals[16] = ::input[PC];
+            vals[17] = '\0';
+            strcpy(::errorText, vals);
+            delete[] vals;
             break;
         }
         PC++;
@@ -320,7 +349,7 @@ namespace audiovisual
         if (active)
             makeDot(r, x, y, color);
         if (!active && ::opaqueText)
-            makeDot(r, x, y, color.r^255, color.g^255, color.b^255);
+            makeDot(r, x, y, color.r ^ 255, color.g ^ 255, color.b ^ 255);
     }
 
     void drawFont(SDL_Renderer *r, int idx, int x, int y, SDL_Color color, bool invert)
@@ -404,10 +433,10 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     {
         audiovisual::drawFont(renderer, 0, col * 8, row * 8, WHITE_TEXT, 1);
     }
-    charIdx=0;
-    while(::errorText[charIdx]!=0)
+    charIdx = 0;
+    while (::errorText[charIdx] != 0)
     {
-        audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), charIdx*8, 248, RED_TEXT, 0);
+        audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), charIdx * 8, 248, RED_TEXT, 0);
     }
 }
 
@@ -593,7 +622,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                         }
                         delete[] substr;
                         cursorPos = SDL_max(0, cursorPos - 1);
-                        ::errorText="";
+                        strcpy(::errorText, "");
                     }
                     else if (keycode == SDLK_F1)
                     {
@@ -655,7 +684,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                             delete[] substr;
                         }
                         cursorPos = SDL_min(strlen(::input), cursorPos + 1);
-                        ::errorText="";
+                        strcpy(::errorText, "");
                     }
                 }
             }

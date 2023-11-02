@@ -5,7 +5,7 @@ make && {
     #read choice
     #if [ $choice = "y" ] || [ $choice = "Y" ]
     #then
-        chmod +x exec
-        ./exec
+        chmod +x bytebeatPlayground
+        ./bytebeatPlayground
     #fi
 }
