@@ -78,9 +78,6 @@
 0,108,254,214,198,198,0,0,
 0,124,102,102,102,102,0,0,
 0,60,102,102,102,60,0,0,
-//     Copyright (C) 2023 Chase T. This program is provided "as-is".
-//     The full copyright and warranty notice can be found in main.cpp.
-
 0,124,102,124,96,96,96,0,
 0,62,102,62,6,6,6,0,
 0,126,96,96,96,96,0,0,

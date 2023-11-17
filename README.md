@@ -8,7 +8,7 @@ Currently, building Bytebeat Playground only needs you to compile a single file,
 prerequisites:
 * SDL 2.0
 ```sh
-    g++ -o exec main.cpp `sdl2-config --cflags --libs`
+    g++ -o bytebeatPlayground main.cpp `sdl2-config --cflags --libs`
 ```
 
 ### CMake

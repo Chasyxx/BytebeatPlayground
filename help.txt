@@ -3,7 +3,8 @@ F2 - Reset t to 0
 F3 - Resume audio
 
 Ctrl+T - Switch between no background and a black background for text.
-Ctrl+S - Save (see line 24)
+Ctrl-W - Enable waveform display
+Ctrl+S - Save (see line 25)
 
 The code edit is very rudimentary at the moment
 (can't be hidden, no selection or clipboard-related things...)

@@ -22,6 +22,7 @@
 #include <SDL2/SDL.h>
 #include <string>
 #define SAMPLES_SIZE 65536
+#define BUFFER_SIZE 512
 #define STACK_UNDERFLOW_CHECK()                 \
     if (SP == 0)                                \
     {                                           \
@@ -46,14 +47,17 @@ const double PI = 3.141592653589793;
 char *input = "Placeholder input";
 char *errorText = "Placeholder error";
 
-char *samples;
+unsigned char *samples, *samples2;
 
 bool SHIFTKEY = false;
 bool CTRLKEY = false;
 
 bool opaqueText = false;
+bool waveform = false;
 
 int cursorPos = 0;
+
+int samplesAddition = 0;
 
 #include "./texts.i"
 
@@ -296,6 +300,7 @@ uint8_t calculateSample(int t)
     }
     const int result = stack[SP];
     delete[] stack;
+    samplesAddition += result;
     return result;
 }
 
@@ -365,17 +370,38 @@ namespace audiovisual
 
     void drawVisualization(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
     {
-        for (int pixelY = 0; pixelY < windowHeight; pixelY++)
-        {
-            for (int pixelX = 0; pixelX < windowWidth; pixelX++)
+        const double redMultiplier = SDL_sin(millis / 1000.0 + (PI * 0 / 3)) / 2 + 0.5;
+        const double greenMultiplier = SDL_sin(millis / 1000.0 + (PI * 2 / 3)) / 2 + 0.5;
+        const double blueMultiplier = SDL_sin(millis / 1000.0 + (PI * 4 / 3)) / 2 + 0.5;
+        // Diagram visualization
+            for (int pixelY = 0; pixelY < windowHeight; pixelY++)
             {
-                const double redMultiplier = SDL_sin(frame / 100.0 + (PI * 0 / 3)) / 2 + 0.5;
-                const double greenMultiplier = SDL_sin(frame / 100.0 + (PI * 2 / 3)) / 2 + 0.5;
-                const double blueMultiplier = SDL_sin(frame / 100.0 + (PI * 4 / 3)) / 2 + 0.5;
-                const Uint8 pixel = samples[(pixelX + pixelY * 256) % SAMPLES_SIZE]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
-                makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
+                for (int pixelX = 0; pixelX < windowWidth; pixelX++)
+                {
+                    const Uint8 pixel = samples[(pixelX + pixelY * 256) % SAMPLES_SIZE]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
+                    makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
+                }
+            }
+        if (waveform)
+        {
+            for (int i = 0; i < BUFFER_SIZE; i++)
+            {
+                unsigned char s1 = 255 - samples2[i];
+                unsigned char s2 = 255 - i == 1023 ? 0 : samples2[i + 1];
+                bool down = samples2[i] <= samples2[i + 1];
+                unsigned char o = static_cast<unsigned char>(SDL_abs(static_cast<int>(samples2[i]) - static_cast<int>(samples2[i + 1])));
+                // makeDot(renderer, i&255, s1, 255);
+                makeDot(renderer, i / (BUFFER_SIZE/256), s1, 255);
+                for (unsigned char j = 1; j < o; j++)
+                {
+                    makeDot(renderer, i / (BUFFER_SIZE/256), down ? s1 - j : s1 + j, 200);
+                }   
             }
         }
+        // else
+        // {
+            
+        // }
     }
 
     void AudioCallback(void *userdata, Uint8 *stream, int len)
@@ -394,6 +420,8 @@ namespace audiovisual
             samples[(i + ::bigT + 768) % SAMPLES_SIZE] = 255;
         }
         ::bigT += len;
+        for (int i = 0; i < BUFFER_SIZE; i++)
+            samples2[i] = audioBuffer[i];
     }
 };
 
@@ -528,9 +556,6 @@ char handleKey(int key)
             key = '"';
             break;
         }
-    switch (key)
-    {
-    }
     return key;
 }
 
@@ -557,6 +582,10 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     if (keycode == 't')
                     {
                         opaqueText = !opaqueText;
+                    }
+                    else if (keycode == 'w')
+                    {
+                        waveform = !waveform;
                     }
                     else if (keycode == 's')
                     {
@@ -660,6 +689,9 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     {
                         ::CTRLKEY = true;
                     }
+                    else if (keycode == SDLK_LALT || keycode == SDLK_RALT)
+                    {
+                    }
                     else
                     {
                         const char key = handleKey(keycode);
@@ -730,7 +762,8 @@ int main(int argc, char **argv)
         std::cerr << "Failed to allocate the memory heap.";
         return -1;
     }
-    samples = new char[SAMPLES_SIZE];
+    samples = new unsigned char[SAMPLES_SIZE];
+    samples2 = new unsigned char[BUFFER_SIZE];
     if (samples == nullptr)
     {
         std::cerr << "Failed to allocate the memory heap.";
@@ -771,7 +804,7 @@ int main(int argc, char **argv)
     audioSpec.freq = SR;
     audioSpec.format = AUDIO_U8;
     audioSpec.channels = 1;
-    audioSpec.samples = 1024;
+    audioSpec.samples = BUFFER_SIZE;
     audioSpec.callback = audiovisual::AudioCallback;
     if (argc > 1)
     {
