@@ -665,6 +665,14 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     {
                         SDL_PauseAudio(0);
                     }
+                    else if (keycode == SDLK_F4)
+                    {
+                        if(::bigT >= 32768) ::bigT -= 32768;
+                    }
+                    else if (keycode == SDLK_F5)
+                    {
+                        ::bigT += 32768;
+                    }
                     else if (keycode == SDLK_LSHIFT || keycode == SDLK_RSHIFT)
                     {
                         ::SHIFTKEY = true;

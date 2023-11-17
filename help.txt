@@ -1,6 +1,8 @@
 F1 - Pause audio
 F2 - Reset t to 0
 F3 - Resume audio
+F4 - skip back 32768 samples
+F5 - skip forward 32768 samples
 
 Ctrl+T - Switch between no background and a black background for text.
 Ctrl-W - Enable waveform display
