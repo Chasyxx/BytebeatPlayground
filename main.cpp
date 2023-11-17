@@ -603,12 +603,12 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                             }
                             buffer[endIndex - 2] = '\0'; // Null terminator
                             std::ofstream file(buffer);
-                            delete[] buffer;
-                            buffer = new char[1024];
+                            // delete[] buffer;
+                            // buffer = new char[1024];
                             int i = 0;
                             while (::input[i] != 0)
                                 i++;
-                            std::cout << std::boolalpha << file.is_open() << buffer << endIndex << std::endl;
+                            std::cout << std::boolalpha << file.is_open() << (file.is_open()?" ":" \007") << buffer << std::endl;
                             if (file.is_open())
                             {
                                 file.write(::input, i);

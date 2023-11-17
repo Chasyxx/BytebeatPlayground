@@ -5,6 +5,7 @@ F3 - Resume audio
 Ctrl+T - Switch between no background and a black background for text.
 Ctrl-W - Enable waveform display
 Ctrl+S - Save (see line 25)
+    - Note: after saving, check the terminal running BP. you should see true followed by the file path you set. if you see false, the save failed.
 
 The code edit is very rudimentary at the moment
 (can't be hidden, no selection or clipboard-related things...)
