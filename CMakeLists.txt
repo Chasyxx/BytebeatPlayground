@@ -7,9 +7,13 @@ find_package(SDL2 REQUIRED)
 add_executable(bytebeatPlayground main.cpp)
 add_executable(fonttest fonttest.cpp)
 
+set(FONT_I_FILE ${CMAKE_BINARY_DIR}/font.ipp)
+
 # Use execute_process to get SDL2 flags and libs
 execute_process(COMMAND sdl2-config --cflags OUTPUT_VARIABLE SDL_CFLAGS)
 execute_process(COMMAND sdl2-config --libs OUTPUT_VARIABLE SDL_LIBS)
+execute_process(COMMAND perl font.pl OUTPUT_VARIABLE FONT_I)
+file(WRITE ${FONT_I_FILE} "${FONT_I}")
 
 # Strip trailing newline characters
 string(STRIP "${SDL_CFLAGS}" SDL_CFLAGS)
