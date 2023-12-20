@@ -345,7 +345,7 @@ uint8_t calculateSample(int t)
                 {
                     PC++;
                     vec.push_back(::input[PC]);
-                }
+                } else
                 vec.push_back(::input[PC]);
                 PC++;
             }
