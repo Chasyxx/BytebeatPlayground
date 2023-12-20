@@ -343,8 +343,8 @@ uint8_t calculateSample(int t)
                 }
                 if(::input[PC] == '\\')
                 {
-                    vec.push_back(::input[++PC]);
                     PC++;
+                    vec.push_back(::input[PC]);
                 }
                 vec.push_back(::input[PC]);
                 PC++;
