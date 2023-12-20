@@ -1,5 +1,17 @@
-//     Copyright (C) 2023 Chase T. This program is provided "as-is".
-//     The full copyright and warranty notice can be found in main.cpp.
+//     This file is part of Bytebeat playground, A stack-based bytebeat runtime.
+//     Copyright © 2023 Chase T.
+
+//     Bytebeat Playground is free software: you can redistribute it and/or modify it under
+//     the terms of the GNU General Public License as published by the Free Software
+//     Foundation, either version 3 of the License, or (at your option) any later
+//     version.
+
+//     Bytebeat Playground is distributed in the hope that it will be useful, but WITHOUT ANY
+//     WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+//     PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+//     You should have received a copy of the GNU General Public License along with
+//     Bytebeat Playground. If not, see <https://www.gnu.org/licenses/>. 
 
 #include <stdio.h>
 #include <SDL2/SDL.h>
@@ -85,7 +97,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     long millis = SDL_GetTicks64();
     drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
     const int tinyWidth = windowWidth/8;
-    for(int i=0; i<95; i++) {
+    for(int i=0; i<96; i++) {
         const int X = i%tinyWidth;
         const int Y = i/tinyWidth;
         drawFont(renderer,i,X*8,Y*8);

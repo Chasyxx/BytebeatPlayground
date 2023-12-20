@@ -1,27 +1,24 @@
-//     Bytebeat playground: bytebeat runtime using RPN stack
-//     Copyright (C) 2023 Chase T.
+//     This file is part of Bytebeat playground, A stack-based bytebeat runtime.
+//     Copyright © 2023 Chase T.
 
-//     This program is free software: you can redistribute it and/or modify
-//     it under the terms of the GNU General Public License as published by
-//     the Free Software Foundation, either version 3 of the License, or
-//     (at your option) any later version.
+//     Bytebeat Playground is free software: you can redistribute it and/or modify it under
+//     the terms of the GNU General Public License as published by the Free Software
+//     Foundation, either version 3 of the License, or (at your option) any later
+//     version.
 
-//     This program is distributed in the hope that it will be useful,
-//     but WITHOUT ANY WARRANTY; without even the implied warranty of
-//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//     GNU General Public License for more details.
+//     Bytebeat Playground is distributed in the hope that it will be useful, but WITHOUT ANY
+//     WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+//     PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-//     You should have received a copy of the GNU General Public License
-//     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-//     creset200@gmail.com
+//     You should have received a copy of the GNU General Public License along with
+//     Bytebeat Playground. If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <SDL2/SDL.h>
 #include <string>
-#define SAMPLES_SIZE 65536
+#include <vector>
 #define BUFFER_SIZE 512
 #define STACK_UNDERFLOW_CHECK()                 \
     if (SP == 0)                                \
@@ -46,22 +43,24 @@ const double PI = 3.141592653589793;
 
 char *input = "Placeholder input";
 char *errorText = "Placeholder error";
+int *memory;
 
 unsigned char *samples, *samples2;
 
 bool SHIFTKEY = false;
 bool CTRLKEY = false;
 
-bool opaqueText = false;
-bool waveform = false;
+namespace drawSettings
+{
+    bool opaqueText = false;
+    bool waveform = false;
+}
 
 int cursorPos = 0;
 
-int samplesAddition = 0;
-
 #include "./texts.i"
 
-const char charCodes[] = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+const char charCodes[] = " \x1b!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
 int chartoIdx(char c)
 {
@@ -75,18 +74,34 @@ int chartoIdx(char c)
     return i;
 }
 
+inline bool isHex(char c)
+{
+    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F');
+}
+
+char hexToChar(char c)
+{
+    if (isHex(c))
+    {
+        return (c >= 'A') ? c - 55 : c - 48;
+    }
+    else
+    {
+        strcpy(::errorText, "Badly formatted hex");
+        return 0;
+    }
+}
+
 uint8_t calculateSample(int t)
 {
     int PC = 0;
     int *stack = new int[256];
+    std::vector<int> callStack;
     int SP = 0;
     int val = 0;
-    char *vals = "Unknown command !";
-    if (stack == nullptr)
-    {
-        std::cerr << "Memory stack allocation failiure" << std::endl;
-        exit(-1);
-    }
+    std::vector<char> vec;
+    char *vals = "Unknown command \x1b";
+    bool inString = false;
     stack[0] = t;
     while (::input[PC] != 0)
     {
@@ -117,12 +132,9 @@ uint8_t calculateSample(int t)
         case 'F':
             STACK_OVERFLOW_CHECK();
             val = 0;
-            while (std::isalnum(::input[PC]) && ::input[PC] < 'G')
+            while (isHex(::input[PC]))
             {
-                char code = ::input[PC];
-                if (code >= 'A')
-                    code -= 7;
-                val = (val << 4) + code - 48;
+                val = (val << 4) + hexToChar(::input[PC]);
                 PC++;
             }
             PC--;
@@ -282,6 +294,120 @@ uint8_t calculateSample(int t)
             if (::input[PC] == 0)
                 strcpy(::errorText, "Conditionals must end with ;");
             break;
+        case '[':
+        {
+            vec = std::vector<char>();
+            PC++;
+            if (::input[PC] == ',')
+                PC++;
+            while (::input[PC] != ']')
+            {
+                if (::input[PC + 1] == ']' || ::input[PC + 1] == '\0' || ::input[PC] == '\0')
+                {
+                    strcpy(::errorText, "Badly formatted constantArray");
+                    PC++;
+                    break;
+                }
+                vec.push_back((hexToChar(::input[PC]) << 4) + hexToChar(::input[PC + 1]));
+                PC += 2;
+                if (::input[PC] == ',')
+                    PC++;
+            }
+            val = vec.size();
+            if (val == 0)
+            {
+                strcpy(::errorText, "Badly formatted constantArray");
+                break;
+            }
+            try
+            {
+                stack[SP] = vec.at(stack[SP] % val);
+            }
+            catch (std::out_of_range e)
+            {
+                strcpy(::errorText, "constantArray OOR error");
+            }
+            break;
+        }
+        case '"':
+        {
+            vec = std::vector<char>();
+            PC++;
+            while (::input[PC] != '"')
+            {
+                if (::input[PC] == '\0')
+                {
+                    strcpy(::errorText, "Badly formatted constantString");
+                    PC++;
+                    break;
+                }
+                if(::input[PC] == '\\')
+                {
+                    vec.push_back(::input[++PC]);
+                    PC++;
+                }
+                vec.push_back(::input[PC]);
+                PC++;
+            }
+            val = vec.size();
+            if (val == 0)
+            {
+                strcpy(::errorText, "Badly formatted constantString");
+                break;
+            }
+            try
+            {
+                stack[SP] = vec.at(stack[SP] % val);
+            }
+            catch (std::out_of_range e)
+            {
+                strcpy(::errorText, "constantString OOR error");
+            }
+            break;
+        }
+        case '!':
+            if (SP < 2)
+            {
+                strcpy(::errorText, "Stack underflow x2");
+                break;
+            }
+            ::memory[stack[SP] & 65535] = stack[SP - 1];
+            SP -= 2;
+            break;
+        case '@':
+            stack[SP] = ::memory[stack[SP] & 65535];
+            break;
+        case '{':
+            STACK_UNDERFLOW_CHECK();
+            ::memory[stack[SP] & 65535] = PC;
+            while (::input[PC] != '}' || inString)
+            {
+                PC++;
+                if (::input[PC] == '"' && !(inString && ::input[PC-1] == '\\')) {
+                    inString = !inString;   
+                }
+                if (::input[PC] == '\0')
+                {
+                    strcpy(::errorText, "Functions must end with }");
+                    break;
+                }
+            }
+            SP--;
+            break;
+        case 'f':
+            STACK_UNDERFLOW_CHECK();
+            callStack.push_back(PC);
+            PC = ::memory[stack[SP] & 65535];
+            SP--;
+            break;
+        case '}':
+            if (callStack.size() == 0)
+            {
+                strcpy(::errorText, "Call stack underflow");
+                break;
+            }
+            PC = callStack.back();
+            callStack.pop_back();
         case ';':
         case ' ':
         case '\n':
@@ -300,7 +426,6 @@ uint8_t calculateSample(int t)
     }
     const int result = stack[SP];
     delete[] stack;
-    samplesAddition += result;
     return result;
 }
 
@@ -353,7 +478,7 @@ namespace audiovisual
                                                                                          : false;
         if (active)
             makeDot(r, x, y, color);
-        if (!active && ::opaqueText)
+        if (!active && drawSettings::opaqueText)
             makeDot(r, x, y, color.r ^ 255, color.g ^ 255, color.b ^ 255);
     }
 
@@ -374,33 +499,33 @@ namespace audiovisual
         const double greenMultiplier = SDL_sin(millis / 1000.0 + (PI * 2 / 3)) / 2 + 0.5;
         const double blueMultiplier = SDL_sin(millis / 1000.0 + (PI * 4 / 3)) / 2 + 0.5;
         // Diagram visualization
-            for (int pixelY = 0; pixelY < windowHeight; pixelY++)
+        for (int pixelY = 0; pixelY < windowHeight; pixelY++)
+        {
+            for (int pixelX = 0; pixelX < windowWidth; pixelX++)
             {
-                for (int pixelX = 0; pixelX < windowWidth; pixelX++)
-                {
-                    const Uint8 pixel = samples[(pixelX + pixelY * 256) % SAMPLES_SIZE]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
-                    makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
-                }
+                const Uint8 pixel = ::samples[(pixelX + pixelY * 256) % 65535]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
+                makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
             }
-        if (waveform)
+        }
+        if (drawSettings::waveform)
         {
             for (int i = 0; i < BUFFER_SIZE; i++)
             {
-                unsigned char s1 = 255 - samples2[i];
-                unsigned char s2 = 255 - i == 1023 ? 0 : samples2[i + 1];
-                bool down = samples2[i] <= samples2[i + 1];
-                unsigned char o = static_cast<unsigned char>(SDL_abs(static_cast<int>(samples2[i]) - static_cast<int>(samples2[i + 1])));
+                unsigned char s1 = 255 - ::samples2[i];
+                unsigned char s2 = 255 - i == 1023 ? 0 : ::samples2[i + 1];
+                bool down = ::samples2[i] <= ::samples2[i + 1];
+                unsigned char o = static_cast<unsigned char>(SDL_abs(static_cast<int>(::samples2[i]) - static_cast<int>(::samples2[i + 1])));
                 // makeDot(renderer, i&255, s1, 255);
-                makeDot(renderer, i / (BUFFER_SIZE/256), s1, 255);
+                makeDot(renderer, i / (BUFFER_SIZE / 256), s1, 255);
                 for (unsigned char j = 1; j < o; j++)
                 {
-                    makeDot(renderer, i / (BUFFER_SIZE/256), down ? s1 - j : s1 + j, 200);
-                }   
+                    makeDot(renderer, i / (BUFFER_SIZE / 256), down ? s1 - j : s1 + j, 200);
+                }
             }
         }
         // else
         // {
-            
+
         // }
     }
 
@@ -414,14 +539,14 @@ namespace audiovisual
             int t = i + ::bigT;
             uint8_t sample = calculateSample(t);
             audioBuffer[i] = sample;
-            samples[(i + ::bigT) % SAMPLES_SIZE] = sample;
-            samples[(i + ::bigT + 256) % SAMPLES_SIZE] = 0;
-            samples[(i + ::bigT + 512) % SAMPLES_SIZE] = 128;
-            samples[(i + ::bigT + 768) % SAMPLES_SIZE] = 255;
+            ::samples[(i + ::bigT) & 65535] = sample;
+            ::samples[(i + ::bigT + 256) & 65535] = 0;
+            ::samples[(i + ::bigT + 512) & 65535] = 128;
+            ::samples[(i + ::bigT + 768) & 65535] = 255;
         }
         ::bigT += len;
         for (int i = 0; i < BUFFER_SIZE; i++)
-            samples2[i] = audioBuffer[i];
+            ::samples2[i] = audioBuffer[i];
     }
 };
 
@@ -581,11 +706,11 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                 {
                     if (keycode == 't')
                     {
-                        opaqueText = !opaqueText;
+                        drawSettings::opaqueText = !drawSettings::opaqueText;
                     }
                     else if (keycode == 'w')
                     {
-                        waveform = !waveform;
+                        drawSettings::waveform = !drawSettings::waveform;
                     }
                     else if (keycode == 's')
                     {
@@ -608,7 +733,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                             int i = 0;
                             while (::input[i] != 0)
                                 i++;
-                            std::cout << std::boolalpha << file.is_open() << (file.is_open()?" ":" \007") << buffer << std::endl;
+                            std::cout << std::boolalpha << file.is_open() << (file.is_open() ? " " : " \007") << buffer << std::endl;
                             if (file.is_open())
                             {
                                 file.write(::input, i);
@@ -667,7 +792,8 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     }
                     else if (keycode == SDLK_F4)
                     {
-                        if(::bigT >= 32768) ::bigT -= 32768;
+                        if (::bigT >= 32768)
+                            ::bigT -= 32768;
                     }
                     else if (keycode == SDLK_F5)
                     {
@@ -758,116 +884,105 @@ int main(int argc, char **argv)
 {
     std::cout << version << std::endl;
     std::cout << "Initial initialization..." << std::endl;
-    ::input = new char[1024];
-    ::errorText = new char[32];
-    if (::input == nullptr)
+    try
     {
-        std::cerr << "Failed to allocate the memory heap.";
-        return -1;
-    }
-    if (::errorText == nullptr)
-    {
-        std::cerr << "Failed to allocate the memory heap.";
-        return -1;
-    }
-    samples = new unsigned char[SAMPLES_SIZE];
-    samples2 = new unsigned char[BUFFER_SIZE];
-    if (samples == nullptr)
-    {
-        std::cerr << "Failed to allocate the memory heap.";
-        return -1;
-    }
-    for (int i = 0; i < argc; i++)
-    {
-        std::cout << argv[i] << std::endl;
-    }
-    std::cout << "Initialazing SDL...\n";
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
-    {
-        std::cerr << "Failed to initialize SDL.";
-        return -1;
-    }
-    std::cout << note << std::endl;
-    std::cout << "Enter your samplerate." << std::endl;
-    int SR;
-    scanf("%d", &SR);
-    std::cout << "Opening window..." << std::endl;
-    SDL_Window *window = SDL_CreateWindow(version, 0, 0, 256, 256, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
-    if (window == nullptr)
-    {
-        std::cerr << "Failed to spawn window." << std::endl;
-        return -1;
-    }
-    std::cout << "Creating renderer..." << std::endl;
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (renderer == nullptr)
-    {
-        std::cerr << "Failed to create a renderer." << std::endl;
-        return -1;
-    }
-    std::cout << "Starting!\n";
+        ::input = new char[1024];
+        ::errorText = new char[32];
+        ::memory = new int[65536];
+        ::samples = new unsigned char[65535];
+        ::samples2 = new unsigned char[BUFFER_SIZE];
 
-    SDL_AudioSpec audioSpec;
-
-    audioSpec.freq = SR;
-    audioSpec.format = AUDIO_U8;
-    audioSpec.channels = 1;
-    audioSpec.samples = BUFFER_SIZE;
-    audioSpec.callback = audiovisual::AudioCallback;
-    if (argc > 1)
-    {
-        const char *filePath = argv[1];
-        std::ifstream file(filePath);
-        if (file.is_open())
+        for (int i = 0; i < argc; i++)
         {
-            file.read(::input, 1024);
+            std::cout << argv[i] << std::endl;
+        }
+        std::cout << "Initialazing SDL...\n";
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+        {
+            std::cerr << "Failed to initialize SDL.";
+            return -1;
+        }
+        std::cout << note << std::endl;
+        std::cout << "Enter your samplerate." << std::endl;
+        int SR;
+        scanf("%d", &SR);
+        std::cout << "Opening window..." << std::endl;
+        SDL_Window *window = SDL_CreateWindow(version, 0, 0, 256, 256, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
+        if (window == nullptr)
+        {
+            std::cerr << "Failed to spawn window." << std::endl;
+            return -1;
+        }
+        std::cout << "Creating renderer..." << std::endl;
+        SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+        if (renderer == nullptr)
+        {
+            std::cerr << "Failed to create a renderer." << std::endl;
+            return -1;
+        }
+        std::cout << "Starting!\n";
+
+        SDL_AudioSpec audioSpec;
+
+        audioSpec.freq = SR;
+        audioSpec.format = AUDIO_U8;
+        audioSpec.channels = 1;
+        audioSpec.samples = BUFFER_SIZE;
+        audioSpec.callback = audiovisual::AudioCallback;
+        if (argc > 1)
+        {
+            const char *filePath = argv[1];
+            std::ifstream file(filePath);
+            if (file.is_open())
+            {
+                file.read(::input, 1024);
+            }
+            else
+            {
+                char *error = new char[1024];
+                for (int i = 0; i < 1024; i++)
+                    error[i] = 0;
+                strcat(error, "# Couldn't open the file:\n# ");
+                strcat(error, argv[1]);
+                strcat(error, "\n\ntAr2A&*C0&\nFFt3rC0&-*8r");
+                drawSettings::opaqueText = true;
+                strcpy(::input, error);
+                delete[] error;
+            }
         }
         else
         {
-            char *error = new char[1024];
+            char *defaultInput = new char[1024];
             for (int i = 0; i < 1024; i++)
-                error[i] = 0;
-            strcat(error, "# Couldn't open the file:\n# ");
-            strcat(error, argv[1]);
-            strcat(error, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*~");
-            ::opaqueText = true;
-            strcpy(::input, error);
-            delete[] error;
+                defaultInput[i] = 0;
+            strcat(defaultInput, "# ");
+            strcat(defaultInput, version);
+            strcat(defaultInput, "\n\ntAr2A&*C0&\nFFt3rC0&-*8r");
+            strcpy(::input, defaultInput);
+            delete[] defaultInput;
         }
-    }
-    else
-    {
-        char *defaultInput = new char[1024];
-        for (int i = 0; i < 1024; i++)
-            defaultInput[i] = 0;
-        if (defaultInput == nullptr)
+
+        if (SDL_OpenAudio(&audioSpec, NULL) < 0)
         {
-            std::cerr << "Failed to allocate the memory heap.";
-            return -1;
+            fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
+            SDL_Quit();
+            exit(1);
         }
-        strcat(defaultInput, "# ");
-        strcat(defaultInput, version);
-        strcat(defaultInput, "\n\ntFr1&?t6_*7/:t10r1&?t9*64&:t64&9_*;B/;tt5*&t6r||A*~");
-        strcpy(::input, defaultInput);
-        delete[] defaultInput;
-    }
 
-    if (SDL_OpenAudio(&audioSpec, NULL) < 0)
-    {
-        fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
+        // Start audio playback
+        SDL_PauseAudio(0);
+
+        SDLMainLoop(renderer, window, audioSpec);
+
+        // Clean up and exit
+        printf("Exiting...\n");
+        SDL_CloseAudio();
         SDL_Quit();
-        exit(1);
     }
-
-    // Start audio playback
-    SDL_PauseAudio(0);
-
-    SDLMainLoop(renderer, window, audioSpec);
-
-    // Clean up and exit
-    printf("Exiting...\n");
-    SDL_CloseAudio();
-    SDL_Quit();
-
+    catch (std::bad_alloc &e)
+    {
+        std::cerr << "Failed to allocate the memory heap. (" << e.what() << ")\n";
+        return -1;
+    }
     return 0;
 }
