@@ -41,9 +41,19 @@ long frame = 0;
 long long bigT = 0;
 const double PI = 3.141592653589793;
 
+constexpr int memory_size = 1 << 22; // 4 MiB of memory allocated
+
 char *input = "Placeholder input";
 char *errorText = "Placeholder error";
 int *memory;
+
+void deleteGlobals()
+{
+    for (int i = 0; i < memory_size; i++)
+    {
+        ::memory[i] = 0;
+    }
+}
 
 unsigned char *samples, *samples2;
 
@@ -61,6 +71,8 @@ int cursorPos = 0;
 #include "./texts.i"
 
 const char charCodes[] = " \x1b!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
+inline int mod(int a, int b) { return (a % b + b) % b; };
 
 int chartoIdx(char c)
 {
@@ -372,15 +384,15 @@ uint8_t calculateSample(int t)
                 strcpy(::errorText, "Stack underflow x2");
                 break;
             }
-            ::memory[stack[SP] & 65535] = stack[SP - 1];
+            ::memory[mod(stack[SP], memory_size)] = stack[SP - 1];
             SP -= 2;
             break;
         case '@':
-            stack[SP] = ::memory[stack[SP] & 65535];
+            stack[SP] = ::memory[mod(stack[SP], memory_size)];
             break;
         case '{':
             STACK_UNDERFLOW_CHECK();
-            ::memory[stack[SP] & 65535] = PC;
+            ::memory[mod(stack[SP], memory_size)] = PC;
             while (::input[PC] != '}' || inString)
             {
                 PC++;
@@ -399,7 +411,7 @@ uint8_t calculateSample(int t)
         case 'f':
             STACK_UNDERFLOW_CHECK();
             callStack.push_back(PC);
-            PC = ::memory[stack[SP] & 65535];
+            PC = ::memory[mod(stack[SP], memory_size)];
             SP--;
             break;
         case '}':
@@ -735,10 +747,15 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                             int i = 0;
                             while (::input[i] != 0)
                                 i++;
-                            std::cout << std::boolalpha << file.is_open() << (file.is_open() ? " " : " \007") << buffer << std::endl;
+                            std::cout << std::boolalpha << file.is_open() << " " << buffer << std::endl;
                             if (file.is_open())
                             {
                                 file.write(::input, i);
+                                strcpy(::errorText, "");
+                            }
+                            else
+                            {
+                                strcpy(::errorText, "Couldn't save file");
                             }
                             delete[] buffer;
                         }
@@ -800,6 +817,11 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                     else if (keycode == SDLK_F5)
                     {
                         ::bigT += 32768;
+                    }
+                    else if (keycode == SDLK_F6)
+                    {
+                        ::frame = ::bigT = 0;
+                        deleteGlobals();
                     }
                     else if (keycode == SDLK_LSHIFT || keycode == SDLK_RSHIFT)
                     {
@@ -890,7 +912,7 @@ int main(int argc, char **argv)
     {
         ::input = new char[1024];
         ::errorText = new char[32];
-        ::memory = new int[65536];
+        ::memory = new int[memory_size];
         ::samples = new unsigned char[65535];
         ::samples2 = new unsigned char[BUFFER_SIZE];
 

@@ -13,6 +13,6 @@
 //     You should have received a copy of the GNU General Public License along with
 //     Bytebeat Playground. If not, see <https://www.gnu.org/licenses/>. 
 
-const char* version = "Bytebeat Playground 1.3";
+const char* version = "Bytebeat Playground 1.3.1";
 
 const char* note = "\nBytebeat playground is licensed under the GPL-3.0 license. There is no warranty\nfor this program, and you can freely redistribute it as long as\nmaintaining copyright and warranty notices. see the COPYING file or\n<https://www.gnu.org/licenses/gpl-3.0.html>.\nCopyright (C) 2023 Chase T.\n";
