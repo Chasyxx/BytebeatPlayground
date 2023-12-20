@@ -21,7 +21,27 @@ Numbers are as in IBNIZ, except for that `.` for decimals is not suppourted
 # is for comments
 t pushes t to the stack
 _ makes a number negative
-x d p and conditionals (...?...; or ...?...:...;) are as in IBNIZ
+x d p ! @ and conditionals (...?...; or ...?...:...;) are as in IBNIZ
+
+{ ... } defines a subroutine (Saves a pointer to mem[x] where x is a value popped off the stack)
+    eg. `1{d*}` defines subroutine 1 to square a number.
+
+f calls a subroutine using the pointer stored at mem[x] (x was the value popped off the stack).
+    eg. `1f` calls subroutine 1.
+
+Quotes define a ConstantString. Every character inside the quotes (quote escaping pssible, to have a literal quote character you'd use \", and for a backslash use \\) is saved and then immeadiately indexed using a value popped off the stack. If the index goes out of range, it wraps around.
+
+Eg. t"Hello world" is equivalent to `"Hello world"[t%11]` in C, or `"Hello world".charCodeAt(t%11)` in JS.
+
+
+Square brackers defind a ConstantArray. Every index in the array is a two digit hex number (must be two digits and hex). They can be seperated with commas, but they don't have to be.
+
+Eg. [00,01,10,FF] is the same as [000110FF].
+
+Apart from commas, there can't be any other formatting everywhere, or you might get the "Badly formatted hex" or "Badly formatted ConstantArray" errors.
+Like a ConstantString, it's then immdeadiately indexed using a value popped off of the stack, wrapping around if out of range.
+
+E. t[48,65,6C,6C,6F,20,77,6F,72,6C,64] is the same as t"Hello world"
 
 despite bring in IBNIZ, q, s, and a aren't added yet, and r is shift right instead of rotate right
 

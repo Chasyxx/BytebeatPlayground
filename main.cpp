@@ -341,12 +341,13 @@ uint8_t calculateSample(int t)
                     PC++;
                     break;
                 }
-                if(::input[PC] == '\\')
+                if (::input[PC] == '\\')
                 {
                     PC++;
                     vec.push_back(::input[PC]);
-                } else
-                vec.push_back(::input[PC]);
+                }
+                else
+                    vec.push_back(::input[PC]);
                 PC++;
             }
             val = vec.size();
@@ -357,7 +358,7 @@ uint8_t calculateSample(int t)
             }
             try
             {
-                stack[SP] = vec.at(stack[SP] % val);
+                stack[SP] = vec.at((stack[SP] % val + val) % val);
             }
             catch (std::out_of_range e)
             {
@@ -383,8 +384,9 @@ uint8_t calculateSample(int t)
             while (::input[PC] != '}' || inString)
             {
                 PC++;
-                if (::input[PC] == '"' && !(inString && ::input[PC-1] == '\\')) {
-                    inString = !inString;   
+                if (::input[PC] == '"' && !(inString && ::input[PC - 1] == '\\'))
+                {
+                    inString = !inString;
                 }
                 if (::input[PC] == '\0')
                 {
