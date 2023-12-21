@@ -907,14 +907,41 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
 int main(int argc, char **argv)
 {
     std::cout << version << std::endl;
-    std::cout << "Initial initialization..." << std::endl;
     try
     {
+        std::cout << "Heap allocation..." << std::endl;
         ::input = new char[1024];
-        ::errorText = new char[32];
+        ::errorText = new char[64];
         ::memory = new int[memory_size];
-        ::samples = new unsigned char[65535];
+        ::samples = new unsigned char[65536];
         ::samples2 = new unsigned char[BUFFER_SIZE];
+        // Windows: zero out memory
+        std::cout << "Heap init..." << std::endl;
+
+        for(int i=0; i<1024; i++)
+        {
+            ::input[i]=0;
+        }
+
+        for(int i=0; i<64; i++)
+        {
+            ::errorText[i]=0;
+        }
+
+        for(int i=0; i<memory_size; i++)
+        {
+            ::memory[i]=0;
+        }
+
+        for(int i=0; i<65536; i++)
+        {
+            ::samples[i]=0;
+        }
+
+        for(int i=0; i<BUFFER_SIZE; i++)
+        {
+            ::samples2[i]=0;
+        }
 
         for (int i = 0; i < argc; i++)
         {
@@ -931,7 +958,7 @@ int main(int argc, char **argv)
         int SR;
         scanf("%d", &SR);
         std::cout << "Opening window..." << std::endl;
-        SDL_Window *window = SDL_CreateWindow(version, 0, 0, 256, 256, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
+        SDL_Window *window = SDL_CreateWindow(version, 32, 32, 256, 256, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
         if (window == nullptr)
         {
             std::cerr << "Failed to spawn window." << std::endl;
