@@ -18,6 +18,8 @@
 #include <fstream>
 #include <SDL2/SDL.h>
 #include <string>
+#include <cstring>
+#include <errno.h>
 #include <vector>
 #define BUFFER_SIZE 512
 #define STACK_UNDERFLOW_CHECK()                 \
@@ -601,9 +603,26 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         audiovisual::drawFont(renderer, 0, col * 8, row * 8, WHITE_TEXT, 1);
     }
     charIdx = 0;
+    row = 0;
+    col = 0;
     while (::errorText[charIdx] != 0)
     {
-        audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), charIdx * 8, 248, RED_TEXT, 0);
+        if (::errorText[charIdx] == '\n')
+        {
+            col = 0;
+            row++;
+            charIdx++;
+        }
+        else
+        {
+            audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), col * 8, (30 + row) * 8, RED_TEXT, false);
+            col++;
+            if (col == 32)
+            {
+                col = 0;
+                row++;
+            }
+        }
     }
 }
 
@@ -756,6 +775,11 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                             else
                             {
                                 strcpy(::errorText, "Couldn't save file");
+                                if (file.fail())
+                                {
+                                    strcat(::errorText, ":\n");
+                                    strcat(::errorText, std::strerror(errno));
+                                }
                             }
                             delete[] buffer;
                         }
@@ -918,29 +942,29 @@ int main(int argc, char **argv)
         // Windows: zero out memory
         std::cout << "Heap init..." << std::endl;
 
-        for(int i=0; i<1024; i++)
+        for (int i = 0; i < 1024; i++)
         {
-            ::input[i]=0;
+            ::input[i] = 0;
         }
 
-        for(int i=0; i<64; i++)
+        for (int i = 0; i < 64; i++)
         {
-            ::errorText[i]=0;
+            ::errorText[i] = 0;
         }
 
-        for(int i=0; i<memory_size; i++)
+        for (int i = 0; i < memory_size; i++)
         {
-            ::memory[i]=0;
+            ::memory[i] = 0;
         }
 
-        for(int i=0; i<65536; i++)
+        for (int i = 0; i < 65536; i++)
         {
-            ::samples[i]=0;
+            ::samples[i] = 0;
         }
 
-        for(int i=0; i<BUFFER_SIZE; i++)
+        for (int i = 0; i < BUFFER_SIZE; i++)
         {
-            ::samples2[i]=0;
+            ::samples2[i] = 0;
         }
 
         for (int i = 0; i < argc; i++)
@@ -971,7 +995,7 @@ int main(int argc, char **argv)
             std::cerr << "Failed to create a renderer." << std::endl;
             return -1;
         }
-        std::cout << "Starting!\n";
+        std::cout << "Starting...\n";
 
         SDL_AudioSpec audioSpec;
 
@@ -1025,10 +1049,16 @@ int main(int argc, char **argv)
 
         SDLMainLoop(renderer, window, audioSpec);
 
-        // Clean up and exit
-        printf("Exiting...\n");
+        std::cout << "Closing SDL...\n";
         SDL_CloseAudio();
         SDL_Quit();
+
+        std::cout << "Freeing heap...\n";
+        delete[] ::memory;
+        delete[] ::samples;
+        delete[] ::samples2;
+        delete[] ::input;
+        delete[] ::errorText;
     }
     catch (std::bad_alloc &e)
     {
