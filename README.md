@@ -14,3 +14,5 @@ Prerequisites:
 or run build.sh (which can also automatically open Bytebeat Playground).
 
 Contact me at <creset200@gmail.com>. Bytebeat Playground is under the GNU GPLv3, and can be freely distributed as long as copyright and warranty notices are maintained. Copyright © 2023 Chase T.
+
+Uses [SDL2](https://www.libsdl.org/).
