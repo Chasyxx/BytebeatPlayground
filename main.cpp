@@ -37,7 +37,7 @@
 namespace colors
 {
     constexpr SDL_Color white{255, 255, 255};
-    constexpr SDL_Color black{0,0,0};
+    constexpr SDL_Color black{0, 0, 0};
     constexpr SDL_Color red{255, 0, 0};
     constexpr SDL_Color green{0, 255, 0};
 };
@@ -68,8 +68,7 @@ bool CTRLKEY = false;
 
 namespace drawSettings
 {
-    bool opaqueText = false;
-    bool waveform = false;
+    bool waveform = true;
 }
 
 int cursorPos = 0;
@@ -498,8 +497,6 @@ namespace audiovisual
                                                                                          : false;
         if (active)
             makeDot(r, x, y, color);
-        else
-            makeDot(r, x, y, color.r ^ 255, color.g ^ 255, color.b ^ 255);
     }
 
     void drawFont(SDL_Renderer *r, int idx, int x, int y, SDL_Color color, bool invert)
@@ -521,8 +518,8 @@ namespace audiovisual
         // Diagram visualization
         for (int idx = 0; idx < 65536; idx++)
         {
-            int x = idx & 255;
-            int y = idx >> 8;
+            int x = idx >> 8;
+            int y = idx & 255;
             makeDot(renderer, x, y, (int)(samples[idx] * redMultiplier), (int)(samples[idx] * greenMultiplier), (int)(samples[idx] * blueMultiplier));
         }
         if (drawSettings::waveform)
@@ -530,14 +527,13 @@ namespace audiovisual
             for (int i = 0; i < BUFFER_SIZE; i++)
             {
                 unsigned char s1 = 255 - ::samples2[i];
-                unsigned char s2 = 255 - i == 1023 ? 0 : ::samples2[i + 1];
                 bool down = ::samples2[i] <= ::samples2[i + 1];
                 unsigned char o = static_cast<unsigned char>(SDL_abs(static_cast<int>(::samples2[i]) - static_cast<int>(::samples2[i + 1])));
                 // makeDot(renderer, i&255, s1, 255);
-                makeDot(renderer, i / (BUFFER_SIZE / 256), s1, 255);
+                makeDot(renderer, (int)(i / (BUFFER_SIZE / 512.0)), s1 + 256, 255);
                 for (unsigned char j = 1; j < o; j++)
                 {
-                    makeDot(renderer, i / (BUFFER_SIZE / 256), down ? s1 - j : s1 + j, 200);
+                    makeDot(renderer, (int)(i / (BUFFER_SIZE / 512.0)), (down ? s1 - j : s1 + j) + 256, 200);
                 }
             }
         }
@@ -574,10 +570,16 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
     long millis = SDL_GetTicks64();
     audiovisual::drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
-    const SDL_Rect *rect = new SDL_Rect{256, 0, 256, 256};
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderFillRect(renderer, rect);
-    delete rect;
+    for (int x = 0; x < 256; x++)
+    {
+        const SDL_Rect *rect = new SDL_Rect{x + 256, 0, 1, 256};
+        SDL_SetRenderDrawColor(renderer,
+                               (int)(SDL_sin(millis / 1000.0 + (x / 256.0) + (PI * 0.0 / 3.0)) * 64 + 64),
+                               (int)(SDL_sin(millis / 1000.0 + (x / 256.0) + (PI * 2.0 / 3.0)) * 64 + 64),
+                               (int)(SDL_sin(millis / 1000.0 + (x / 256.0) + (PI * 4.0 / 3.0)) * 64 + 64), 255);
+        SDL_RenderFillRect(renderer, rect);
+        delete rect;
+    }
     int charIdx = 0;
     char row = 0;
     char col = 0;
@@ -587,7 +589,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         {
             if (cursorPos == charIdx)
             {
-                audiovisual::drawFont(renderer, 0, (col+32) * 8, row * 8, colors::black, 1);
+                audiovisual::drawFont(renderer, 0, (col + 32) * 8, row * 8, colors::white, 1);
             }
             col = 0;
             row++;
@@ -595,7 +597,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         }
         else
         {
-            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx++]), (col+32) * 8, row * 8, colors::black, cursorPos == charIdx);
+            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx++]), (col + 32) * 8, row * 8, colors::white, cursorPos == charIdx);
             col++;
             if (col == 32)
             {
@@ -606,7 +608,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     }
     if (cursorPos == charIdx)
     {
-        audiovisual::drawFont(renderer, 0, (col + 32) * 8, row * 8, colors::black, 1);
+        audiovisual::drawFont(renderer, 0, (col + 32) * 8, row * 8, colors::white, 1);
     }
     charIdx = 0;
     row = 0;
@@ -621,7 +623,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         }
         else
         {
-            audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), (col + 32) * 8, (30 + row) * 8, colors::red, false);
+            audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), (col + 32) * 8, (29 + row) * 8, colors::red, false);
             col++;
             if (col == 32)
             {
@@ -629,6 +631,13 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
                 row++;
             }
         }
+    }
+    audiovisual::drawFont(renderer, chartoIdx('t'), 256, 248, colors::green, false);
+    audiovisual::drawFont(renderer, chartoIdx('='), 264, 248, colors::green, false);
+    std::string tstring = std::to_string(bigT);
+    for (int i = 0; i < tstring.length(); i++)
+    {
+        audiovisual::drawFont(renderer, chartoIdx(tstring[i]), 256+((i+2)*8), 248, colors::green, false);
     }
 }
 
@@ -743,13 +752,10 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                 SDL_Keycode keycode = keysym.sym;
                 if (::CTRLKEY)
                 {
-                    if (keycode == 't')
-                    {
-                        drawSettings::opaqueText = !drawSettings::opaqueText;
-                    }
-                    else if (keycode == 'w')
+                    if (keycode == 'w')
                     {
                         drawSettings::waveform = !drawSettings::waveform;
+                        SDL_SetWindowSize(window, 512, drawSettings::waveform ? 512 : 256);
                     }
                     else if (keycode == 's')
                     {
@@ -988,7 +994,7 @@ int main(int argc, char **argv)
         int SR;
         scanf("%d", &SR);
         std::cout << "Opening window..." << std::endl;
-        SDL_Window *window = SDL_CreateWindow(version, 32, 32, 512, 256, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
+        SDL_Window *window = SDL_CreateWindow(version, 32, 32, 512, 512, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
         if (window == nullptr)
         {
             std::cerr << "Failed to spawn window." << std::endl;
@@ -1026,7 +1032,6 @@ int main(int argc, char **argv)
                 strcat(error, "# Couldn't open the file:\n# ");
                 strcat(error, argv[1]);
                 strcat(error, "\n\ntAr2A&*C0&\nFFt3rC0&-*8r");
-                drawSettings::opaqueText = true;
                 strcpy(::input, error);
                 delete[] error;
             }
