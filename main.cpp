@@ -34,9 +34,13 @@
         strcpy(::errorText, "Stack overflow"); \
         break;                                 \
     }
-
-constexpr SDL_Color WHITE_TEXT{255, 255, 255};
-constexpr SDL_Color RED_TEXT{255, 0, 0};
+namespace colors
+{
+    constexpr SDL_Color white{255, 255, 255};
+    constexpr SDL_Color black{0,0,0};
+    constexpr SDL_Color red{255, 0, 0};
+    constexpr SDL_Color green{0, 255, 0};
+};
 // #define DEBUG
 
 long frame = 0;
@@ -494,7 +498,7 @@ namespace audiovisual
                                                                                          : false;
         if (active)
             makeDot(r, x, y, color);
-        if (!active && drawSettings::opaqueText)
+        else
             makeDot(r, x, y, color.r ^ 255, color.g ^ 255, color.b ^ 255);
     }
 
@@ -515,13 +519,11 @@ namespace audiovisual
         const double greenMultiplier = SDL_sin(millis / 1000.0 + (PI * 2 / 3)) / 2 + 0.5;
         const double blueMultiplier = SDL_sin(millis / 1000.0 + (PI * 4 / 3)) / 2 + 0.5;
         // Diagram visualization
-        for (int pixelY = 0; pixelY < windowHeight; pixelY++)
+        for (int idx = 0; idx < 65536; idx++)
         {
-            for (int pixelX = 0; pixelX < windowWidth; pixelX++)
-            {
-                const Uint8 pixel = ::samples[(pixelX + pixelY * 256) % 65535]; //(int)((pixelX - windowWidth / 2.0) * (SDL_fmod((millis / 1000.0), 4.0) - 2)) ^ (int)((pixelY - windowHeight / 2.0) * (SDL_fmod((millis / 1000.0) + 1, 4.0) - 2));
-                makeDot(renderer, pixelX, pixelY, pixel * redMultiplier, pixel * greenMultiplier, pixel * blueMultiplier);
-            }
+            int x = idx & 255;
+            int y = idx >> 8;
+            makeDot(renderer, x, y, (int)(samples[idx] * redMultiplier), (int)(samples[idx] * greenMultiplier), (int)(samples[idx] * blueMultiplier));
         }
         if (drawSettings::waveform)
         {
@@ -572,6 +574,10 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
     long millis = SDL_GetTicks64();
     audiovisual::drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
+    const SDL_Rect *rect = new SDL_Rect{256, 0, 256, 256};
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderFillRect(renderer, rect);
+    delete rect;
     int charIdx = 0;
     char row = 0;
     char col = 0;
@@ -581,7 +587,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         {
             if (cursorPos == charIdx)
             {
-                audiovisual::drawFont(renderer, 0, col * 8, row * 8, WHITE_TEXT, 1);
+                audiovisual::drawFont(renderer, 0, (col+32) * 8, row * 8, colors::black, 1);
             }
             col = 0;
             row++;
@@ -589,7 +595,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         }
         else
         {
-            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx++]), col * 8, row * 8, WHITE_TEXT, cursorPos == charIdx);
+            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx++]), (col+32) * 8, row * 8, colors::black, cursorPos == charIdx);
             col++;
             if (col == 32)
             {
@@ -600,7 +606,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     }
     if (cursorPos == charIdx)
     {
-        audiovisual::drawFont(renderer, 0, col * 8, row * 8, WHITE_TEXT, 1);
+        audiovisual::drawFont(renderer, 0, (col + 32) * 8, row * 8, colors::black, 1);
     }
     charIdx = 0;
     row = 0;
@@ -615,7 +621,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         }
         else
         {
-            audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), col * 8, (30 + row) * 8, RED_TEXT, false);
+            audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), (col + 32) * 8, (30 + row) * 8, colors::red, false);
             col++;
             if (col == 32)
             {
@@ -982,7 +988,7 @@ int main(int argc, char **argv)
         int SR;
         scanf("%d", &SR);
         std::cout << "Opening window..." << std::endl;
-        SDL_Window *window = SDL_CreateWindow(version, 32, 32, 256, 256, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
+        SDL_Window *window = SDL_CreateWindow(version, 32, 32, 512, 256, SDL_WINDOW_SHOWN); //  | SDL_WINDOW_RESIZABLE
         if (window == nullptr)
         {
             std::cerr << "Failed to spawn window." << std::endl;
