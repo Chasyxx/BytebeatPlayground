@@ -1,5 +1,5 @@
 //     This file is part of Bytebeat playground, A stack-based bytebeat runtime.
-//     Copyright © 2023 Chase T.
+//     Copyright © 2023, 2024 Chase Taylor
 
 //     Bytebeat Playground is free software: you can redistribute it and/or modify it under
 //     the terms of the GNU General Public License as published by the Free Software
@@ -13,6 +13,6 @@
 //     You should have received a copy of the GNU General Public License along with
 //     Bytebeat Playground. If not, see <https://www.gnu.org/licenses/>. 
 
-const char* version = "Bytebeat Playground s1.1.0";
+const char* version = "Bytebeat Playground s1.2.0-A";
 
-const char* note = "\nBytebeat playground is licensed under the GPL-3.0 license. There is no warranty\nfor this program, and you can freely redistribute it as long as\nmaintaining copyright and warranty notices. see the COPYING file or\n<https://www.gnu.org/licenses/gpl-3.0.html>.\nCopyright (C) 2023 Chase T.\n";
+const char* note = "\nBytebeat playground is licensed under the GPL-3.0 license. This is free\nsoftware, and you are welcome to redistribute it under certain conditions. \nSee the COPYING file or <https://www.gnu.org/licenses/gpl.html>.\n\nCopyright (C) 2023, 2024 Chase Taylor\n";

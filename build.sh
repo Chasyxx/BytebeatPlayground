@@ -1,3 +1,5 @@
+#!/bin/sh
+
 echo "Starting CMake"
 cmake . && echo "Starting Makefile" &&
 make && {

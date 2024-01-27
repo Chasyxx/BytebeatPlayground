@@ -1,5 +1,5 @@
 //     This file is part of Bytebeat playground, A stack-based bytebeat runtime.
-//     Copyright © 2023 Chase T.
+//     Copyright © 2023, 2024 Chase Taylor
 
 //     Bytebeat Playground is free software: you can redistribute it and/or modify it under
 //     the terms of the GNU General Public License as published by the Free Software

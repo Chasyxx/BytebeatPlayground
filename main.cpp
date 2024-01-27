@@ -1,5 +1,5 @@
 //     This file is part of Bytebeat playground, A stack-based bytebeat runtime.
-//     Copyright © 2023 Chase T.
+//     Copyright © 2023, 2024 Chase Taylor
 
 //     Bytebeat Playground is free software: you can redistribute it and/or modify it under
 //     the terms of the GNU General Public License as published by the Free Software
@@ -21,6 +21,7 @@
 #include <cstring>
 #include <errno.h>
 #include <vector>
+#include <filesystem>
 #define BUFFER_SIZE 512
 #define STACK_UNDERFLOW_CHECK()                 \
     if (SP == 0)                                \
@@ -52,6 +53,8 @@ constexpr int memory_size = 1 << 22; // 4 MiB of memory allocated
 char *input = "Placeholder input";
 char *errorText = "Placeholder error";
 int *memory;
+
+char* argv0;
 
 void deleteGlobals()
 {
@@ -119,6 +122,8 @@ uint8_t calculateSample(int t)
     std::vector<char> vec;
     char *vals = "Unknown command \x1b";
     bool inString = false;
+    std::vector<int> loopPoints;
+    std::vector<int> loopCounts;
     stack[0] = t;
     while (::input[PC] != 0)
     {
@@ -271,15 +276,19 @@ uint8_t calculateSample(int t)
             val = 0;
             PC++;
             if (colon)
-                while ((val != 0 || ::input[PC] != ';') && ::input[PC] != 0)
+                while ((val != 0 || ::input[PC] != ';' || inString) && ::input[PC] != 0)
                 {
+                    if (::input[PC] == '"' && !(inString && ::input[PC - 1] == '\\'))
+                    {
+                        inString = !inString;
+                    }
                     if (val < 0)
                         break;
-                    if (::input[PC] == '?')
+                    if (::input[PC] == '?' && !inString)
                         val++;
-                    if (::input[PC] == ';')
+                    if (::input[PC] == ';' && !inString)
                         val--;
-                    if (val == 0 && ::input[PC] == ':')
+                    if (val == 0 && ::input[PC] == ':' && !inString)
                     {
                         PC++;
                         break;
@@ -302,9 +311,13 @@ uint8_t calculateSample(int t)
                     strcpy(::errorText, "; with no conditional to match");
                     break;
                 }
-                if (::input[PC] == '?')
+                if (::input[PC] == '"' && !(inString && ::input[PC - 1] == '\\'))
+                {
+                    inString = !inString;
+                }
+                if (::input[PC] == '?' && !inString)
                     val++;
-                if (::input[PC] == ';')
+                if (::input[PC] == ';' && !inString)
                     val--;
                 PC++;
             }
@@ -384,6 +397,7 @@ uint8_t calculateSample(int t)
             break;
         }
         case '!':
+        case 'W':
             if (SP < 2)
             {
                 strcpy(::errorText, "Stack underflow x2");
@@ -393,6 +407,7 @@ uint8_t calculateSample(int t)
             SP -= 2;
             break;
         case '@':
+        case 'R':
             stack[SP] = ::memory[mod(stack[SP], memory_size)];
             break;
         case '{':
@@ -427,6 +442,75 @@ uint8_t calculateSample(int t)
             }
             PC = callStack.back();
             callStack.pop_back();
+            break;
+        case 'L':
+            STACK_UNDERFLOW_CHECK();
+            val = 0;
+            if (stack[SP]==0)  {
+                PC++;
+                while ((val != 0 || ::input[PC] != 'e') && ::input[PC] != 0)
+                {
+                    if (::input[PC] == '"' && !(inString && ::input[PC - 1] == '\\'))
+                    {
+                        inString = !inString;
+                    }
+                    if (val < 0)
+                        break;
+                    if (::input[PC] == 'L' && !inString)
+                        val++;
+                    if (::input[PC] == 'e' && !inString)
+                        val--;
+                    PC++;
+                }
+                if(::input[PC]==0) {
+                    strcpy(::errorText, "Loops must end with e");
+                }
+            } else {
+                loopCounts.push_back(stack[SP]);
+                loopPoints.push_back(PC);
+            }
+            SP--;
+            break;
+        case 'e':
+            if(loopCounts.size() == 0) {
+                strcpy(::errorText, "Loop stack underflow");
+                break;
+            }
+            if(loopPoints.size() == 0) {
+                strcpy(::errorText, "Loop stack underflow");
+                break;
+            }
+            if(loopCounts.back() < 2) {
+                loopCounts.pop_back();
+                loopPoints.pop_back();
+                break;
+            }
+            val = loopCounts.back();
+            loopCounts.pop_back();
+            loopCounts.push_back(val-1);
+            PC = loopPoints.back();
+             break;
+        case 'X':
+            if(loopPoints.size() == 0) {
+                strcpy(::errorText, "Loop stack underflow (break)");
+                break;
+            }
+            loopCounts.pop_back();
+            loopPoints.pop_back();
+            while ((val != 0 || ::input[PC] != 'e') && ::input[PC] != 0)
+                {
+                    if (val < 0)
+                        break;
+                    if (::input[PC] == 'L')
+                        val++;
+                    if (::input[PC] == 'e')
+                        val--;
+                    PC++;
+                }
+                if(::input[PC]==0) {
+                    strcpy(::errorText, "Loops must end with e");
+                }
+            break;
         case ';':
         case ' ':
         case '\n':
@@ -570,13 +654,13 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
     long millis = SDL_GetTicks64();
     audiovisual::drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
-    for (int x = 0; x < 256; x++)
+    for (int y = 0; y < 256; y++)
     {
-        const SDL_Rect *rect = new SDL_Rect{x + 256, 0, 1, 256};
+        const SDL_Rect *rect = new SDL_Rect{256, y, 256, 1};
         SDL_SetRenderDrawColor(renderer,
-                               (int)(SDL_sin(millis / 1000.0 + (x / 256.0) + (PI * 0.0 / 3.0)) * 64 + 64),
-                               (int)(SDL_sin(millis / 1000.0 + (x / 256.0) + (PI * 2.0 / 3.0)) * 64 + 64),
-                               (int)(SDL_sin(millis / 1000.0 + (x / 256.0) + (PI * 4.0 / 3.0)) * 64 + 64), 255);
+                               (int)(SDL_sin(millis / 1000.0 + (y / 256.0) + (PI * 0.0 / 3.0)) * 48 + 48)+32,
+                               (int)(SDL_sin(millis / 1000.0 + (y / 256.0) + (PI * 2.0 / 3.0)) * 48 + 48)+32,
+                               (int)(SDL_sin(millis / 1000.0 + (y / 256.0) + (PI * 4.0 / 3.0)) * 48 + 48)+32, 255);
         SDL_RenderFillRect(renderer, rect);
         delete rect;
     }
@@ -597,12 +681,13 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
         }
         else
         {
-            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx++]), (col + 32) * 8, row * 8, colors::white, cursorPos == charIdx);
-            col++;
+            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx]), (col + 32) * 8, row * 8, colors::white, cursorPos == charIdx);
+            ++charIdx;
+            ++col;
             if (col == 32)
             {
                 col = 0;
-                row++;
+                ++row;
             }
         }
     }
@@ -750,6 +835,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                 // Check the key that was pressed
                 SDL_Keysym keysym = event.key.keysym;
                 SDL_Keycode keycode = keysym.sym;
+                if(keycode == 1073742051) continue;
                 if (::CTRLKEY)
                 {
                     if (keycode == 'w')
@@ -762,26 +848,50 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                         if (::input[0] == '#' && ::input[1] == '#')
                         {
                             int endIndex = 2;
+                            int startIndex = 2;
                             while (::input[endIndex] != '\n' && ::input[endIndex] != '\0')
                                 endIndex++;
-                            if (::input[endIndex] == '\0')
+                            startIndex = endIndex;
+                            while (::input[startIndex] == '\n' || ::input[startIndex] == ' ')
+                                startIndex++;
+                            if (::input[endIndex] == '\0' || ::input[startIndex] == '\0')
                                 continue;
-                            char *buffer = new char[256];
+                            char *savePath = new char[256];
+                            char *saveCode = new char[1280];
                             for (int i = 0; i < endIndex - 2; i++)
                             {
-                                buffer[i] = ::input[i + 2];
+                                savePath[i] = ::input[i + 2];
                             }
-                            buffer[endIndex - 2] = '\0'; // Null terminator
-                            std::ofstream file(buffer);
-                            // delete[] buffer;
-                            // buffer = new char[1024];
-                            int i = 0;
-                            while (::input[i] != 0)
-                                i++;
-                            std::cout << std::boolalpha << file.is_open() << " " << buffer << std::endl;
+                            savePath[endIndex - 2] = '\0'; // Null terminator
+
+                            int codeSize = 0;
+
+                            {
+                                int i=2;
+                                int j=0;
+                                // Shebang
+                                saveCode[0] = '#';
+                                saveCode[1] = '!';
+                                // Exec path
+                                for(j = 0; ::argv0[j] != '\0'; j++) {
+                                    saveCode[i++] = ::argv0[j];
+                                }
+                                saveCode[i++] = '\n';
+                                saveCode[i++] = '\n';
+                                // Code
+                                for(j = startIndex; ::input[j] != '\0'; j++) {
+                                    saveCode[i++] = ::input[j];
+                                }
+                                saveCode[i++] = '\n';
+                                saveCode[i] = '\0';
+                                codeSize = i;
+                            }
+
+                            std::ofstream file(savePath);
+                            std::cout << std::boolalpha << file.is_open() << " " << savePath << std::endl;
                             if (file.is_open())
                             {
-                                file.write(::input, i);
+                                file.write(saveCode, codeSize);
                                 strcpy(::errorText, "");
                             }
                             else
@@ -793,7 +903,8 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
                                     strcat(::errorText, std::strerror(errno));
                                 }
                             }
-                            delete[] buffer;
+                            delete[] savePath;
+                            delete[] saveCode;
                         }
                         else
                         {
@@ -940,8 +1051,36 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
     }
 }
 
+// We need this for converting from relative to absolute path
+char* stringToChar(std::string str) {
+    int size = str.size();
+    char* out = new char[size+1];
+    out[size] = '\0';
+    for(int i = 0; i < size; i++) {
+        out[i] = str[i];
+    }
+    return out;
+}
+
 int main(int argc, char **argv)
 {
+    if (argc > 0) {
+        std::filesystem::path path(argv[0]);
+        if(!path.is_absolute()) {
+        // Convert argv[0] to an absolute path
+        std::filesystem::path pwd = std::filesystem::current_path();
+        std::filesystem::path absolutePath = pwd / path;
+
+            ::argv0 = stringToChar(absolutePath.string());
+        }
+        else ::argv0 = argv[0];
+    }
+    else
+    {
+        ::argv0 = new char[2];
+        ::argv0[0] = '.';
+        ::argv0[10] = '\0';
+    }
     std::cout << version << std::endl;
     try
     {
@@ -979,10 +1118,6 @@ int main(int argc, char **argv)
             ::samples2[i] = 0;
         }
 
-        for (int i = 0; i < argc; i++)
-        {
-            std::cout << argv[i] << std::endl;
-        }
         std::cout << "Initialazing SDL...\n";
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
         {
@@ -1022,7 +1157,32 @@ int main(int argc, char **argv)
             std::ifstream file(filePath);
             if (file.is_open())
             {
-                file.read(::input, 1024);
+                char* buffer = new char[1280];
+                for( int i = 0; i < 1280; i++ ) buffer[i] = 0;
+                file.read(buffer, 1280);
+                int i = 0;
+                int j = 0;
+                if(buffer[0]=='#' && (buffer[1]=='#' || buffer[1]=='!')) {
+                    // Shebang/path extraction
+                    while(buffer[i]!='\n' && buffer[i]!='\0') {
+                        i++;
+                    }
+                }
+                while(buffer[i]=='\n' || buffer[i]==' ') {
+                    i++;
+                }
+                // ##File/path
+                ::input[j++] = '#';
+                ::input[j++] = '#';
+                for(int k=0; argv[1][k]!='\0'; k++) {
+                    input[j++] = argv[1][k];
+                }
+                ::input[j++] = '\n';
+                ::input[j++] = '\n';
+                // Code
+                while(j < 1024) {
+                    ::input[j++] = buffer[i++];
+                }
             }
             else
             {
@@ -1070,6 +1230,7 @@ int main(int argc, char **argv)
         delete[] ::samples2;
         delete[] ::input;
         delete[] ::errorText;
+        delete[] ::argv0;
     }
     catch (std::bad_alloc &e)
     {

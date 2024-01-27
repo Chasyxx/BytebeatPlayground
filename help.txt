@@ -16,19 +16,25 @@ add ##<filepath> to the begining of your code to save it to that location. e.g:
 To load a file, simply add it's name to the command line.
     ./bytebeatPlayground testfie.bp
 
-The code edit is very rudimentary at the moment
-(can't be hidden, no selection or clipboard-related things...)
-
 This program is somewhat inspired by IBNIZ:
 http://viznut.fi/ibniz https://github.com/viznut/IBNIZ/
 Unlike ibniz's 16.16 fixpoint, bytebeat playground uses 32 bit integers.
 
 Numbers are 32 bit integers. Numerical literals are in hexadecimal.
-+ - * / % & | ^ ~ l d p x, are as in IBNIZ (% or / by 0 returns 0 back)
++ - * / % & | ^ ~ l, are as in IBNIZ (% or / by 0 returns 0 back)
 # is for comments
 t pushes t to the stack
 _ makes a number negative
-x d p ! @ and conditionals (...?...; or ...?...:...;) are as in IBNIZ
+! @ and conditionals (...?...; or ...?...:...;) are as in IBNIZ
+
+Stack manipulation
+
+2 3 x -> 3 2
+1 d -> 1 1
+1 2 p -> 1
+
+memory
+1 , 2 W # Save 1 to MEM[2]
 
 
 { ... } defines a subroutine (Saves a pointer to mem[x] where x is a value popped off the stack)
