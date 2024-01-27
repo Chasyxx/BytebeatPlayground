@@ -14,6 +14,6 @@ Inspired by things such as the [Ideally Bare Numeric Impression giZmo](http://vi
 After this, you should have a `BytebeatPlayground` or `BytebeatPlayground.exe` binary. `build.sh` is a Bash script for GNU/Linux that performs these instructions automatically.
 
 Bytebeat Playground is under the GNU GPLv3, and can be freely distributed and modified under certain conditions. See the COPYING file or <https://www.gnu.org/licenses/gpl.html>. This program comes with ABSOLUTELY NO WARRANTY.
-Copyright © 2023, 2024 Chase T. <creset200@gmail.com>
+Copyright © 2023, 2024 Chase Taylor
 
 ![GPL3 logo](https://www.gnu.org/graphics/gplv3-with-text-136x68.png)
