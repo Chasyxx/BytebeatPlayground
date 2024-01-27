@@ -15,7 +15,6 @@
 
 #include <stdio.h>
 #include <SDL2/SDL.h>
-#include <string>
 // #include <cmath>
 
 long frame = 0;
