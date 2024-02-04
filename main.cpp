@@ -535,39 +535,31 @@ uint8_t calculateSample(int t)
 namespace audiovisual
 {
     const int font[] = {
-#include "font.ipp"
+        #include "font.ipp"
     };
 
     void makeDot(SDL_Renderer *renderer, int x, int y, SDL_Color color)
     {
-        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
         SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-        SDL_RenderDrawRect(renderer, rect);
-        delete rect;
+        SDL_RenderDrawPoint(renderer, x, y);
     }
 
     void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 brightness)
     {
-        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
         SDL_SetRenderDrawColor(renderer, brightness, brightness, brightness, 255U);
-        SDL_RenderDrawRect(renderer, rect);
-        delete rect;
+        SDL_RenderDrawPoint(renderer, x, y);
     }
 
     void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue)
     {
-        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
         SDL_SetRenderDrawColor(renderer, red, green, blue, 255U);
-        SDL_RenderDrawRect(renderer, rect);
-        delete rect;
+        SDL_RenderDrawPoint(renderer, x, y);
     }
 
     void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue, Uint8 alpha)
     {
-        const SDL_Rect *rect = new SDL_Rect{x, y, 1, 1};
         SDL_SetRenderDrawColor(renderer, red, green, blue, alpha);
-        SDL_RenderDrawRect(renderer, rect);
-        delete rect;
+        SDL_RenderDrawPoint(renderer, x, y);
     }
 
     void drawFontDot(SDL_Renderer *r, int idx, int x, int y, SDL_Color color, bool invert)
