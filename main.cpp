@@ -37,10 +37,10 @@
     }
 namespace colors
 {
-    constexpr SDL_Color white{255, 255, 255};
-    constexpr SDL_Color black{0, 0, 0};
-    constexpr SDL_Color red{255, 0, 0};
-    constexpr SDL_Color green{0, 255, 0};
+    constexpr SDL_Color white{255, 255, 255, 255};
+    constexpr SDL_Color black{0, 0, 0, 255};
+    constexpr SDL_Color red{255, 0, 0, 255};
+    constexpr SDL_Color green{0, 255, 0, 255};
 };
 // #define DEBUG
 
@@ -50,8 +50,8 @@ const double PI = 3.141592653589793;
 
 constexpr int memory_size = 1 << 22; // 4 MiB of memory allocated
 
-char *input = "Placeholder input";
-char *errorText = "Placeholder error";
+char *input = const_cast<char *>("Placeholder input");
+char *errorText = const_cast<char *>("Placeholder error");
 int *memory;
 
 char* argv0;
@@ -120,7 +120,7 @@ uint8_t calculateSample(int t)
     int SP = 0;
     int val = 0;
     std::vector<char> vec;
-    char *vals = "Unknown command \x1b";
+    char *vals = const_cast<char *>("Unknown command \x1b");
     bool inString = false;
     std::vector<int> loopPoints;
     std::vector<int> loopCounts;
@@ -353,7 +353,7 @@ uint8_t calculateSample(int t)
             {
                 stack[SP] = vec.at(stack[SP] % val);
             }
-            catch (std::out_of_range e)
+            catch (std::out_of_range&)
             {
                 strcpy(::errorText, "constantArray OOR error");
             }
@@ -390,7 +390,7 @@ uint8_t calculateSample(int t)
             {
                 stack[SP] = vec.at((stack[SP] % val + val) % val);
             }
-            catch (std::out_of_range e)
+            catch (std::out_of_range&)
             {
                 strcpy(::errorText, "constantString OOR error");
             }
@@ -586,7 +586,7 @@ namespace audiovisual
         }
     }
 
-    void drawVisualization(int windowWidth, int windowHeight, long millis, SDL_Renderer *renderer, long frame)
+    void drawVisualization(/*int windowWidth, int windowHeight, */long millis, SDL_Renderer *renderer/*, long frame*/)
     {
         const double redMultiplier = SDL_sin(millis / 1000.0 + (PI * 0 / 3)) / 2 + 0.5;
         const double greenMultiplier = SDL_sin(millis / 1000.0 + (PI * 2 / 3)) / 2 + 0.5;
@@ -621,6 +621,7 @@ namespace audiovisual
 
     void AudioCallback(void *userdata, Uint8 *stream, int len)
     {
+        (void)(userdata);
         uint8_t *audioBuffer = (uint8_t *)stream;
 
         // Generate samples
@@ -640,12 +641,12 @@ namespace audiovisual
     }
 };
 
-void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
+void update(SDL_Window *window, SDL_Renderer *renderer)
 {
     int windowWidth, windowHeight;
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
     long millis = SDL_GetTicks64();
-    audiovisual::drawVisualization(windowWidth, windowHeight, millis, renderer, frame);
+    audiovisual::drawVisualization(millis, renderer);
     for (int y = 0; y < 256; y++)
     {
         const SDL_Rect *rect = new SDL_Rect{256, y, 256, 1};
@@ -712,7 +713,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer, long frame)
     audiovisual::drawFont(renderer, chartoIdx('t'), 256, 248, colors::green, false);
     audiovisual::drawFont(renderer, chartoIdx('='), 264, 248, colors::green, false);
     std::string tstring = std::to_string(bigT);
-    for (int i = 0; i < tstring.length(); i++)
+    for (unsigned int i = 0; i < tstring.length(); i++)
     {
         audiovisual::drawFont(renderer, chartoIdx(tstring[i]), 256+((i+2)*8), 248, colors::green, false);
     }
@@ -809,7 +810,7 @@ char handleKey(int key)
     return key;
 }
 
-void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPEC)
+void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window/*, SDL_AudioSpec &ASPEC*/)
 {
     bool quit = false;
     SDL_Event event;
@@ -1036,7 +1037,8 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioSpec &ASPE
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        update(window, renderer, ::frame++);
+        update(window, renderer);
+        ++::frame;
 
         // Update the screen
         SDL_RenderPresent(renderer);
@@ -1071,7 +1073,7 @@ int main(int argc, char **argv)
     {
         ::argv0 = new char[2];
         ::argv0[0] = '.';
-        ::argv0[10] = '\0';
+        ::argv0[1] = '\0';
     }
     std::cout << version << std::endl;
     try
@@ -1210,7 +1212,7 @@ int main(int argc, char **argv)
         // Start audio playback
         SDL_PauseAudio(0);
 
-        SDLMainLoop(renderer, window, audioSpec);
+        SDLMainLoop(renderer, window);
 
         std::cout << "Closing SDL...\n";
         SDL_CloseAudio();
