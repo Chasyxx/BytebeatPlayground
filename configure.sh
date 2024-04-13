@@ -70,7 +70,7 @@ while [ $# -gt 0 ]; do
 	case $1 in
 		--clean)
 			make clean
-			rm -v ./Makefile
+			rm -v ./Makefile ./src/Makefile
 			exit 0
 			;;
 		--disable-werror)
@@ -184,7 +184,9 @@ notice "Final libs are $LIBS"
 checkwarnings
 notice "Generating Makefile"
 
-cat > Makefile << EOS
+notice " - ./src"
+
+cat > src/Makefile << EOS
 CC=$CC
 CXX=$CXX
 CFLAGS=$CFLAGS
@@ -192,17 +194,28 @@ LIBS=$LIBS
 CCLD=$CCLD
 CLEAN=rm -fv
 
-all: bytebeatPlayground
+all: ../bytebeatPlayground
 
 clean:
-	\$(CLEAN) ./font.ipp
-	\$(CLEAN) ./bytebeatPlayground
-	\$(CLEAN) ./fonttest
+	\$(CLEAN) ./font.ixx
+	\$(CLEAN) ./*.o
+	\$(CLEAN) ./*.oxx
+	\$(CLEAN) ../bytebeatPlayground
+	\$(CLEAN) ../font-test
 
-bytebeatPlayground: main.cpp font.ipp
-	\$(CXX) \$(CFLAGS) \$(LIBS) -o \$@ \$<
+../bytebeatPlayground: main.oxx
+	\$(CXX) \$(LIBS) -o \$@ \$<
 
-font.ipp: font.pl
+../font-test: font-test.oxx
+	\$(CXX) \$(LIBS) -o \$@ \$<
+
+main.oxx: main.cxx font.ixx
+	\$(CXX) \$(CFLAGS) -c -o \$@ \$<
+
+font-test.oxx: font-test.cxx font.ixx
+	\$(CXX) \$(CFLAGS) -c -o \$@ \$<
+
+font.ixx: font.pl
 	perl \$< > \$@
 
 %.out: %.o
@@ -217,4 +230,20 @@ font.ipp: font.pl
 %.oxx: %.cxx
 	\$(CXX) \$(CFLAGS) -c -o \$@ \$<
 EOS
-notice "Done generating Makefile"
+
+notice " - ."
+cat > Makefile << EOS
+all:
+	@\$(MAKE) -C src
+
+clean:
+	@\$(MAKE) -C src clean
+
+font:
+	@\$(MAKE) -C src font.ixx
+
+font-test:
+	@\$(MAKE) -C src ../font-test
+EOS
+
+notice "Done creating makefiles"

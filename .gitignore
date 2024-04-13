@@ -1,7 +1,9 @@
 /.vscode/
 /saves/
 
-bytebeatPlayground
-fonttest
+/bytebeatPlayground
+/fonttest
 Makefile
-font.ipp
+/src/font.ixx
+src/*.o
+src/*.oxx

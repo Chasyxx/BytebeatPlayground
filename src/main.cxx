@@ -535,7 +535,7 @@ uint8_t calculateSample(int t)
 namespace audiovisual
 {
     const int font[] = {
-        #include "font.ipp"
+        #include "font.ixx"
     };
 
     void makeDot(SDL_Renderer *renderer, int x, int y, SDL_Color color)

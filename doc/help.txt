@@ -21,11 +21,14 @@ http://viznut.fi/ibniz https://github.com/viznut/IBNIZ/
 Unlike ibniz's 16.16 fixpoint, bytebeat playground uses 32 bit integers.
 
 Numbers are 32 bit integers. Numerical literals are in hexadecimal.
-+ - * / % & | ^ ~ l, are as in IBNIZ (% or / by 0 returns 0 back)
+The syntax is mainly made up of reverse polish notation.
++ - * / % & | ^ ~ l, are as in C
 # is for comments
-t pushes t to the stack
-_ makes a number negative
-! @ and conditionals (...?...; or ...?...:...;) are as in IBNIZ
+t pushes the time variable to the stack
+_ negates
+W takes a and b from the stack and saves b in memory index a.
+R takes a and pushes what is at memory index a.
+Memory is 4MB large.
 
 Stack manipulation
 
@@ -33,22 +36,14 @@ Stack manipulation
 1 d -> 1 1
 1 2 p -> 1
 
-memory
-1 , 2 W # Save 1 to MEM[2]
-
-
 { ... } defines a subroutine (Saves a pointer to mem[x] where x is a value popped off the stack)
     eg. `1{d*}` defines subroutine 1 to square a number.
-
 
 f calls a subroutine using the pointer stored at mem[x] (x was the value popped off the stack).
     eg. `1f` calls subroutine 1.
 
-
 Quotes define a ConstantString. Every character inside the quotes (quote escaping pssible, to have a literal quote character you'd use \", and for a backslash use \\) is saved and then immeadiately indexed using a value popped off the stack. If the index goes out of range, it wraps around.
-
 Eg. t"Hello world" is equivalent to `"Hello world"[t%11]` in C, or `"Hello world".charCodeAt(t%11)` in JS.
-
 
 Square brackers define a ConstantArray. Every index in the array is a two digit hex number (must be two digits and hex). They can be seperated with commas, but they don't have to be.
 

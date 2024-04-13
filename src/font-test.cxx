@@ -22,7 +22,7 @@ long long bigT = 0;
 const double PI = 3.141592653589793;
 
 const Uint8 font[] = {
-    #include "font.ipp"
+    #include "font.ixx"
 };
 
 void makeDot(SDL_Renderer *renderer, int x, int y, SDL_Color color)
