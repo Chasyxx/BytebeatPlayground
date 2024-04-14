@@ -22,6 +22,9 @@
 #include <errno.h>
 #include <vector>
 #include <filesystem>
+extern "C" {
+    #include <visual.h>
+}
 #define BUFFER_SIZE 512
 #define STACK_UNDERFLOW_CHECK()                 \
     if (SP == 0)                                \
@@ -35,13 +38,6 @@
         strcpy(::errorText, "Stack overflow"); \
         break;                                 \
     }
-namespace colors
-{
-    constexpr SDL_Color white{255, 255, 255, 255};
-    constexpr SDL_Color black{0, 0, 0, 255};
-    constexpr SDL_Color red{255, 0, 0, 255};
-    constexpr SDL_Color green{0, 255, 0, 255};
-};
 // #define DEBUG
 
 long frame = 0;
@@ -78,21 +74,7 @@ int cursorPos = 0;
 
 #include "./texts.i"
 
-const char charCodes[] = " \x1b!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-
 inline int mod(int a, int b) { return (a % b + b) % b; };
-
-int chartoIdx(char c)
-{
-    int i = 0;
-    while (charCodes[i] != c)
-    {
-        i++;
-        if (i >= 256)
-            return 1;
-    };
-    return i;
-}
 
 inline bool isHex(char c)
 {
@@ -534,58 +516,6 @@ uint8_t calculateSample(int t)
 
 namespace audiovisual
 {
-    const int font[] = {
-        #include "font.ixx"
-    };
-
-    void makeDot(SDL_Renderer *renderer, int x, int y, SDL_Color color)
-    {
-        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-        SDL_RenderDrawPoint(renderer, x, y);
-    }
-
-    void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 brightness)
-    {
-        SDL_SetRenderDrawColor(renderer, brightness, brightness, brightness, 255U);
-        SDL_RenderDrawPoint(renderer, x, y);
-    }
-
-    void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue)
-    {
-        SDL_SetRenderDrawColor(renderer, red, green, blue, 255U);
-        SDL_RenderDrawPoint(renderer, x, y);
-    }
-
-    void makeDot(SDL_Renderer *renderer, int x, int y, Uint8 red, Uint8 green, Uint8 blue, Uint8 alpha)
-    {
-        SDL_SetRenderDrawColor(renderer, red, green, blue, alpha);
-        SDL_RenderDrawPoint(renderer, x, y);
-    }
-
-    void drawFontDot(SDL_Renderer *r, int idx, int x, int y, SDL_Color color, bool invert)
-    {
-        const int X = x % 8;
-        const int Y = y % 8;
-        // const int XX = X / 8 * 8;
-        // const int YY = Y / 8 * 8;
-        const int arrayIndex = idx * 8 + Y;
-        const bool active = font[arrayIndex] << X & 128 ? invert ? false : true : invert ? true
-                                                                                         : false;
-        if (active)
-            makeDot(r, x, y, color);
-    }
-
-    void drawFont(SDL_Renderer *r, int idx, int x, int y, SDL_Color color, bool invert)
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                drawFontDot(r, idx, x + i, y + j, color, invert);
-            }
-        }
-    }
-
     void drawVisualization(/*int windowWidth, int windowHeight, */long millis, SDL_Renderer *renderer/*, long frame*/)
     {
         const double redMultiplier = SDL_sin(millis / 1000.0 + (PI * 0 / 3)) / 2 + 0.5;
@@ -596,7 +526,7 @@ namespace audiovisual
         {
             int x = idx >> 8;
             int y = idx & 255;
-            makeDot(renderer, x, y, (int)(samples[idx] * redMultiplier), (int)(samples[idx] * greenMultiplier), (int)(samples[idx] * blueMultiplier));
+            visual_makeDotRGB(renderer, x, y, (int)(samples[idx] * redMultiplier), (int)(samples[idx] * greenMultiplier), (int)(samples[idx] * blueMultiplier));
         }
         if (drawSettings::waveform)
         {
@@ -606,10 +536,10 @@ namespace audiovisual
                 bool down = ::samples2[i] <= ::samples2[i + 1];
                 unsigned char o = static_cast<unsigned char>(SDL_abs(static_cast<int>(::samples2[i]) - static_cast<int>(::samples2[i + 1])));
                 // makeDot(renderer, i&255, s1, 255);
-                makeDot(renderer, (int)(i / (BUFFER_SIZE / 512.0)), s1 + 256, 255);
+                visual_makeDotGrayscale(renderer, (int)(i / (BUFFER_SIZE / 512.0)), s1 + 256, 255);
                 for (unsigned char j = 1; j < o; j++)
                 {
-                    makeDot(renderer, (int)(i / (BUFFER_SIZE / 512.0)), (down ? s1 - j : s1 + j) + 256, 200);
+                    visual_makeDotGrayscale(renderer, (int)(i / (BUFFER_SIZE / 512.0)), (down ? s1 - j : s1 + j) + 256, 200);
                 }
             }
         }
@@ -666,7 +596,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
         {
             if (cursorPos == charIdx)
             {
-                audiovisual::drawFont(renderer, 0, (col + 32) * 8, row * 8, colors::white, 1);
+                visual_drawChar(renderer, 0, (col + 32) * 8, row * 8, visual_whiteText, 1);
             }
             col = 0;
             row++;
@@ -674,7 +604,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
         }
         else
         {
-            audiovisual::drawFont(renderer, chartoIdx(::input[charIdx]), (col + 32) * 8, row * 8, colors::white, cursorPos == charIdx);
+            visual_drawChar(renderer, visual_charToIdx(::input[charIdx]), (col + 32) * 8, row * 8, visual_whiteText, cursorPos == charIdx);
             ++charIdx;
             ++col;
             if (col == 32)
@@ -686,7 +616,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
     }
     if (cursorPos == charIdx)
     {
-        audiovisual::drawFont(renderer, 0, (col + 32) * 8, row * 8, colors::white, 1);
+        visual_drawChar(renderer, 0, (col + 32) * 8, row * 8, visual_whiteText, 1);
     }
     charIdx = 0;
     row = 0;
@@ -701,7 +631,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
         }
         else
         {
-            audiovisual::drawFont(renderer, chartoIdx(::errorText[charIdx++]), (col + 32) * 8, (29 + row) * 8, colors::red, false);
+            visual_drawChar(renderer, visual_charToIdx(::errorText[charIdx++]), (col + 32) * 8, (29 + row) * 8, visual_redText, false);
             col++;
             if (col == 32)
             {
@@ -710,12 +640,11 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
             }
         }
     }
-    audiovisual::drawFont(renderer, chartoIdx('t'), 256, 248, colors::green, false);
-    audiovisual::drawFont(renderer, chartoIdx('='), 264, 248, colors::green, false);
+    visual_drawString(renderer, const_cast<char *>("t="), 256, 248, visual_greenText, false, 32);
     std::string tstring = std::to_string(bigT);
     for (unsigned int i = 0; i < tstring.length(); i++)
     {
-        audiovisual::drawFont(renderer, chartoIdx(tstring[i]), 256+((i+2)*8), 248, colors::green, false);
+        visual_drawChar(renderer, visual_charToIdx(tstring[i]), 256+((i+2)*8), 248, visual_greenText, false);
     }
 }
 

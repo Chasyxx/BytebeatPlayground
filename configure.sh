@@ -12,7 +12,7 @@ DRY_RUN=0
 if on $CFLAGS; then
 	WERROR_ENABLED=0
 else
-	CFLAGS="-O2 -Wall -Wextra"
+	CFLAGS="-O2 -Wall -Wextra -I$PWD/src/headers"
 fi
 
 on $BINDIRS && BINDIRS="$BINDIRS "
@@ -70,7 +70,7 @@ while [ $# -gt 0 ]; do
 	case $1 in
 		--clean)
 			make clean
-			rm -v ./Makefile ./src/Makefile
+			rm -v ./Makefile ./src/Makefile ./src/visual/Makefile
 			exit 0
 			;;
 		--disable-werror)
@@ -165,10 +165,11 @@ if ! availible stat; then
 	error "You do not have stat"
 fi
 
-require		$CXX
-require 	$CC
-want 		expr 		&& COUNT_WARNINGS=1
-prefer 		$CCLD
+require $CXX
+require $CC
+require perl
+want    expr  && COUNT_WARNINGS=1
+prefer  $CCLD
 
 if [ $AUTOADD_SDL -eq 1 ]; then
 	require 	sdl2-config
@@ -184,6 +185,24 @@ notice "Final libs are $LIBS"
 checkwarnings
 notice "Generating Makefile"
 
+notice " - ./src/visual"
+
+cat > src/visual/Makefile << EOS
+CC=$CC
+CXX=$CXX
+CFLAGS=$CFLAGS
+LIBS=$LIBS
+CCLD=$CCLD
+
+all: ../visual.o
+
+../visual.o: visual.c font.i
+	\$(CC) \$(CFLAGS) -c -o \$@ \$<
+
+font.i: font.pl
+	perl \$< > \$@
+EOS
+
 notice " - ./src"
 
 cat > src/Makefile << EOS
@@ -197,26 +216,26 @@ CLEAN=rm -fv
 all: ../bytebeatPlayground
 
 clean:
-	\$(CLEAN) ./font.ixx
+	\$(CLEAN) ./visual/font.i
 	\$(CLEAN) ./*.o
 	\$(CLEAN) ./*.oxx
 	\$(CLEAN) ../bytebeatPlayground
 	\$(CLEAN) ../font-test
 
-../bytebeatPlayground: main.oxx
-	\$(CXX) \$(LIBS) -o \$@ \$<
+../bytebeatPlayground: visual.o main.oxx
+	\$(CXX) \$(LIBS) -o \$@ \$^
 
-../font-test: font-test.oxx
-	\$(CXX) \$(LIBS) -o \$@ \$<
+../font-test: visual.o font-test.oxx
+	\$(CXX) \$(LIBS) -o \$@ \$^
 
-main.oxx: main.cxx font.ixx
+main.oxx: main.cxx texts.i
 	\$(CXX) \$(CFLAGS) -c -o \$@ \$<
 
-font-test.oxx: font-test.cxx font.ixx
+font-test.oxx: font-test.cxx
 	\$(CXX) \$(CFLAGS) -c -o \$@ \$<
 
-font.ixx: font.pl
-	perl \$< > \$@
+visual.o: visual/font.pl visual/visual.c
+	@\$(MAKE) -C visual
 
 %.out: %.o
 	\$(CC) \$(LIBS) -o \$@ \$<
@@ -240,7 +259,7 @@ clean:
 	@\$(MAKE) -C src clean
 
 font:
-	@\$(MAKE) -C src font.ixx
+	@\$(MAKE) -C src/visual font.i
 
 font-test:
 	@\$(MAKE) -C src ../font-test

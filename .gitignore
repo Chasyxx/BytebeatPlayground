@@ -4,6 +4,7 @@
 /bytebeatPlayground
 /fonttest
 Makefile
-/src/font.ixx
-src/*.o
-src/*.oxx
+/src/visual/font.i
+*.o
+*.oxx
+.clangd
