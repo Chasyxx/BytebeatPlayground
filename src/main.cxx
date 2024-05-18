@@ -13,6 +13,8 @@
 //     You should have received a copy of the GNU General Public License along with
 //     Bytebeat Playground. If not, see <https://www.gnu.org/licenses/>.
 
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_stdinc.h>
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -61,9 +63,6 @@ void deleteGlobals()
 }
 
 unsigned char *samples, *samples2;
-
-bool SHIFTKEY = false;
-bool CTRLKEY = false;
 
 namespace drawSettings
 {
@@ -604,7 +603,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
         }
         else
         {
-            visual_drawChar(renderer, visual_charToIdx(::input[charIdx]), (col + 32) * 8, row * 8, visual_whiteText, cursorPos == charIdx);
+            visual_drawChar(renderer, indexes_charToIdx(::input[charIdx]), (col + 32) * 8, row * 8, visual_whiteText, cursorPos == charIdx);
             ++charIdx;
             ++col;
             if (col == 32)
@@ -631,7 +630,7 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
         }
         else
         {
-            visual_drawChar(renderer, visual_charToIdx(::errorText[charIdx++]), (col + 32) * 8, (29 + row) * 8, visual_redText, false);
+            visual_drawChar(renderer, indexes_charToIdx(::errorText[charIdx++]), (col + 32) * 8, (29 + row) * 8, visual_redText, false);
             col++;
             if (col == 32)
             {
@@ -644,113 +643,50 @@ void update(SDL_Window *window, SDL_Renderer *renderer)
     std::string tstring = std::to_string(bigT);
     for (unsigned int i = 0; i < tstring.length(); i++)
     {
-        visual_drawChar(renderer, visual_charToIdx(tstring[i]), 256+((i+2)*8), 248, visual_greenText, false);
+        visual_drawChar(renderer, indexes_charToIdx(tstring[i]), 256+((i+2)*8), 248, visual_greenText, false);
     }
-}
-
-char handleKey(int key)
-{
-#ifdef DEBUG
-    std::cout << "key `" << SDL_GetKeyName(key) << "` pressed (" << key << ") [SHIFT " << ::SHIFTKEY << "]" << std::endl;
-#endif
-    if (key >= 'a' && key <= 'z' && ::SHIFTKEY)
-        key -= 32; // if (SP == 255)
-                   //     break;
-                   // stack[++SP] = 15;
-                   // break;
-    switch (key)
-    {
-    case SDLK_RETURN:
-    case SDLK_RETURN2:
-        key = '\n';
-        break;
-    }
-    if (::SHIFTKEY)
-        switch (key)
-        {
-            break;
-        case '1':
-            key = '!';
-            break;
-        case '2':
-            key = '@';
-            break;
-        case '3':
-            key = '#';
-            break;
-        case '4':
-            key = '$';
-            break;
-        case '5':
-            key = '%';
-            break;
-        case '6':
-            key = '^';
-            break;
-        case '7':
-            key = '&';
-            break;
-        case '8':
-            key = '*';
-            break;
-        case '9':
-            key = '(';
-            break;
-        case '0':
-            key = ')';
-            break;
-
-        case '`':
-            key = '~';
-            break;
-        case '-':
-            key = '_';
-            break;
-        case '=':
-            key = '+';
-            break;
-        case '[':
-            key = '{';
-            break;
-        case ']':
-            key = '}';
-            break;
-
-        case '\\':
-            key = '|';
-            break;
-        case ',':
-            key = '<';
-            break;
-        case '.':
-            key = '>';
-            break;
-        case '/':
-            key = '?';
-            break;
-
-        case ';':
-            key = ':';
-            break;
-        case '\'':
-            key = '"';
-            break;
-        }
-    return key;
 }
 
 void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window/*, SDL_AudioSpec &ASPEC*/)
 {
     bool quit = false;
     SDL_Event event;
-
     while (!quit)
     {
         while (SDL_PollEvent(&event))
         {
+            const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
             if (event.type == SDL_QUIT)
             {
                 quit = true;
+            }
+            else if(event.type == SDL_TEXTINPUT) {
+                const char *keys = event.text.text;
+                for(size_t selectedKey = 0; selectedKey < strlen(keys); selectedKey++) {
+                    const char key = keys[selectedKey];
+                    const int len = strlen(::input);
+                    if (cursorPos == len)
+                    {
+                        ::input[len] = key;
+                    }
+                    else
+                    {
+                        char *substr = new char[len - cursorPos + 1];
+                        for (int i = 0; i < len - cursorPos; i++)
+                        {
+                            substr[i] = ::input[i + cursorPos];
+                        }
+                        substr[len - cursorPos] = 0; // Null terminator
+                        ::input[cursorPos] = key;
+                        for (int i = 0; i < len - cursorPos + 1; i++)
+                        {
+                            ::input[i + cursorPos + 1] = substr[i];
+                        }
+                        delete[] substr;
+                    }
+                    cursorPos = SDL_min(strlen(::input), static_cast<size_t>(cursorPos + 1));
+                    strcpy(::errorText, "");
+                }
             }
             else if (event.type == SDL_KEYDOWN)
             {
@@ -758,7 +694,7 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window/*, SDL_AudioSpec &AS
                 SDL_Keysym keysym = event.key.keysym;
                 SDL_Keycode keycode = keysym.sym;
                 if(keycode == 1073742051) continue;
-                if (::CTRLKEY)
+                if ((currentKeyStates[SDL_SCANCODE_LCTRL] || currentKeyStates[SDL_SCANCODE_RCTRL]))
                 {
                     if (keycode == 'w')
                     {
@@ -892,17 +828,13 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window/*, SDL_AudioSpec &AS
                         ::frame = ::bigT = 0;
                         deleteGlobals();
                     }
-                    else if (keycode == SDLK_LSHIFT || keycode == SDLK_RSHIFT)
-                    {
-                        ::SHIFTKEY = true;
-                    }
                     else if (keycode == SDLK_LEFT)
                     {
                         cursorPos = SDL_max(0, cursorPos - 1);
                     }
                     else if (keycode == SDLK_RIGHT)
                     {
-                        cursorPos = SDL_min(strlen(::input), cursorPos + 1);
+                        cursorPos = SDL_min(strlen(::input), static_cast<size_t>(cursorPos + 1));
                     }
                     else if (keycode == SDLK_UP)
                     {
@@ -910,54 +842,8 @@ void SDLMainLoop(SDL_Renderer *renderer, SDL_Window *window/*, SDL_AudioSpec &AS
                     }
                     else if (keycode == SDLK_DOWN)
                     {
-                        cursorPos = SDL_min(strlen(::input), cursorPos + 8);
+                        cursorPos = SDL_min(strlen(::input), static_cast<size_t>(cursorPos + 8));
                     }
-                    else if (keycode == SDLK_LCTRL || keycode == SDLK_RCTRL)
-                    {
-                        ::CTRLKEY = true;
-                    }
-                    else if (keycode == SDLK_LALT || keycode == SDLK_RALT)
-                    {
-                    }
-                    else
-                    {
-                        const char key = handleKey(keycode);
-                        const int len = strlen(::input);
-                        if (cursorPos == len)
-                        {
-                            ::input[len] = key;
-                        }
-                        else
-                        {
-                            char *substr = new char[len - cursorPos + 1];
-                            for (int i = 0; i < len - cursorPos; i++)
-                            {
-                                substr[i] = ::input[i + cursorPos];
-                            }
-                            substr[len - cursorPos] = 0; // Null terminator
-                            ::input[cursorPos] = key;
-                            for (int i = 0; i < len - cursorPos + 1; i++)
-                            {
-                                ::input[i + cursorPos + 1] = substr[i];
-                            }
-                            delete[] substr;
-                        }
-                        cursorPos = SDL_min(strlen(::input), cursorPos + 1);
-                        strcpy(::errorText, "");
-                    }
-                }
-            }
-            else if (event.type == SDL_KEYUP)
-            {
-                SDL_Keysym keysym = event.key.keysym;
-                SDL_Keycode keycode = keysym.sym;
-                if (keycode == SDLK_LSHIFT || keycode == SDLK_RSHIFT)
-                {
-                    ::SHIFTKEY = false;
-                }
-                else if (keycode == SDLK_LCTRL || keycode == SDLK_RCTRL)
-                {
-                    ::CTRLKEY = false;
                 }
             }
         }

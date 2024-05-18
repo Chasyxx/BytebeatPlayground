@@ -183,7 +183,7 @@ notice "Final libs are $LIBS"
 [ $DRY_RUN -eq 1 ] && exit 0;
 
 checkwarnings
-notice "Generating Makefile"
+notice "Generating makefiles"
 
 notice " - ./src/visual"
 
@@ -220,6 +220,7 @@ clean:
 	\$(CLEAN) ./*.o
 	\$(CLEAN) ./*.oxx
 	\$(CLEAN) ../bytebeatPlayground
+	\$(CLEAN) ../bytebeatPlayground.exe
 	\$(CLEAN) ../font-test
 
 ../bytebeatPlayground: visual.o main.oxx

@@ -76,7 +76,7 @@ const char visual_charCodes[] =
 #include "./font.charset"
     ;
 
-char visual_charToIdx(char c) {
+char indexes_charToIdx(char c) {
   unsigned short i = 0;
   while (visual_charCodes[i] != c) {
     i++;
@@ -96,7 +96,7 @@ void visual_drawString(SDL_Renderer *r, char *str, int x, int y,
       X = 0;
       Y++;
     } else {
-      visual_drawChar(r, visual_charToIdx(str[i]), x + (X * 8), y + (Y * 8),
+      visual_drawChar(r, indexes_charToIdx(str[i]), x + (X * 8), y + (Y * 8),
                       color, invert);
       X++;
     }

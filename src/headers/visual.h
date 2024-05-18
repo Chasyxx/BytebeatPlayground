@@ -45,14 +45,14 @@ extern void visual_makeDotGrayscale(SDL_Renderer *renderer, int x, int y,
 
 /**
  * Conveinience function for setting the brush color and drawing a pixel.
- * This varient takes a indivual RGB values.
+ * This varient takes individual RGB values.
  */
 extern void visual_makeDotRGB(SDL_Renderer *renderer, int x, int y, Uint8 red,
                               Uint8 green, Uint8 blue);
 
 /**
  * Conveinience function for setting the brush color and drawing a pixel.
- * This varient takes a indivual RGB values, and an alpha value.
+ * This varient takes individual RGB values, and an alpha value.
  */
 extern void visual_makeDotRGBA(SDL_Renderer *renderer, int x, int y, Uint8 red,
                                Uint8 green, Uint8 blue, Uint8 alpha);
@@ -72,7 +72,7 @@ extern const char visual_charCodes[];
  * \returns 1 if no character is found (ususally rendered as a crossed out box
  * that is also explicitly tagged as `'\x1b'`.)
  */
-extern char visual_charToIdx(char c);
+extern char indexes_charToIdx(char c);
 
 /**
  * Prints any string (char*) at the location specified, using the color
